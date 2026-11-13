@@ -1,3 +1,4 @@
+import { CircleAlert, CircleCheck, Info } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import type { Tone } from "../types";
 
@@ -11,6 +12,12 @@ export function Alert({
   children: ReactNode;
   tone?: Tone;
 }) {
+  const Icon =
+    tone === "emerald"
+      ? CircleCheck
+      : tone === "ruby" || tone === "gold"
+        ? CircleAlert
+        : Info;
   return (
     <div
       {...props}
@@ -18,21 +25,8 @@ export function Alert({
       data-tone={tone}
       role={tone === "ruby" ? "alert" : "status"}
     >
-      <span className="rf-alert-seal" aria-hidden="true">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          focusable="false"
-          aria-hidden="true"
-        >
-          {tone === "emerald" ? (
-            <path d="m6 12 4 4 8-8" />
-          ) : tone === "ruby" ? (
-            <path d="m8 8 8 8m0-8-8 8" />
-          ) : (
-            <path d="M12 11v6m0-10v.5" />
-          )}
-        </svg>
+      <span className="rf-alert-icon" aria-hidden="true">
+        <Icon aria-hidden="true" />
       </span>
       <div className="rf-alert-copy">
         <strong className="rf-alert-title">{title}</strong>

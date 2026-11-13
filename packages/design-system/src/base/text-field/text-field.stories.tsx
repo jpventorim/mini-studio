@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A writable paper inset held by a cut timber frame and iron edge. Persistent labels and linked help and error messages accompany the Base UI input.",
+          "A labeled writing box integrates as a baseline inside paper. Linked help and error messages accompany the Base UI input.",
       },
     },
   },

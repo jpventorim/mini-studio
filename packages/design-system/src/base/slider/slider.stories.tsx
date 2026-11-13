@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A single iron carriage with a ridged grip travels a graduated timber rail. The paper readout displays its value; arrow keys adjust it and Home/End reach the limits.",
+          "A quiet continuous track and round thumb. The value is visible; keyboard steps remain available.",
       },
     },
   },

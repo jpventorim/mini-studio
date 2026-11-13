@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Wood-grained painted action plates press into a firm iron backing. Ruby is the primary action; gold plates carry dark lettering.",
+          "Blue ink is the primary action. Outlined and quiet text variants provide secondary actions; ochre fills use dark lettering.",
       },
     },
   },

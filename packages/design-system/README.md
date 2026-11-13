@@ -3,10 +3,12 @@
 An internal React design-system package. Start with [DESIGN.md](./DESIGN.md) for
 the living visual direction and open questions. This iteration contains 19 base
 components; higher-level Library components are intentionally deferred.
-The [second-pass review](./design-review.md) records the three rounds per component
-and integrated validation, including the cohesion and light/dark theme pass.
-The current palette uses `gold` in place of the initial
-`brass` tone, and primary buttons default to `ruby`.
+The system uses graph notebooks, plain working sheets, graphite text, and blue
+ink. **All components** is the current working system. Dark visual refinement
+follows the light review.
+
+Primary buttons default to `sapphire`. Explicit `ruby`, `emerald`, `gold`, and
+`neutral` tones remain available; gold fills use dark lettering.
 
 From the repository root:
 
@@ -56,19 +58,19 @@ embedded in the library bundle. The package is private until a release is approv
 
 `ThemeProvider` accepts `light` or `dark`. Nested providers remain independent;
 Select, Dialog, Popover, and Tooltip portals inherit their originating theme.
-The provider supplies tokens; `rf-workbench` additionally paints the timber canvas
+The provider supplies tokens; `rf-workbench` additionally paints the graph-paper canvas
 and fills at least the viewport height. Choose the theme in Storybook's toolbar.
 
 TextField, Textarea, and Select accept `surface="auto"` (default), `"mounted"`, or
-`"integrated"`. Auto fields integrate into a parchment Panel and retain their own
-backing elsewhere. Use mounted for a separate insert or integrated when the
-parent supplies the writing surface. Panel also supports `material="wood"` and
-`material="leather"`. For a plain paper area, combine `rf-surface-paper` and
-`rf-paper-surface`; `rf-surface-wood` supplies a timber area with ivory ink.
+`"integrated"`. Auto fields integrate into a paper Panel and retain their own
+backing elsewhere. Use mounted for a separate writing box or integrated when the
+parent supplies the writing surface. Panel defaults to a plain sheet and accepts
+`clipped` for one decorative stationery clip. Panel is paper-only.
+For a plain paper area, combine `rf-surface-paper` and `rf-paper-surface`.
 
-**Design system / Compositions** shows paper, timber, leather, nested panels,
-validation, and compact forms. **Design system / Themes** shows each theme,
-side-by-side materials, mixed-theme overlays, and an interactive switcher. These
+**All components** shows the integrated paper vocabulary. **Compositions** shows
+shared paper, independent writing boxes, validation, and compact forms.
+**Themes** shows both palettes, mixed-theme overlays, and a switcher. These
 forms are story fixtures, not higher-level library components.
 
 Each `src/base/<component>/` folder has `index.tsx`, `styles.ts`, a `.stories.tsx`,

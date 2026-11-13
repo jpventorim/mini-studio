@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Painted enamel travels through an iron measuring channel held in timber. Paper labels show progress, completion, or ongoing work.",
+          "A printed track and solid ink fill show progress. Labels distinguish completion and indeterminate work.",
       },
     },
   },

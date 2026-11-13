@@ -9,26 +9,24 @@ export const selectStyles = defineGlobalStyles({
     overflowWrap: "anywhere",
   },
   ".rf-select-trigger": {
-    display: "flex",
-    position: "relative",
-    alignItems: "stretch",
-    width: "100%",
-    minWidth: "0",
-    minHeight: "52px",
-    padding: "4px",
-    gap: "4px",
-    border: "1px solid var(--rf-wood-edge)",
-    borderRadius: "2px 1px 2px 1px",
-    background: "var(--rf-wood-texture)",
-    boxShadow: "var(--rf-depth-mounted)",
-    color: "var(--rf-paper-ink)",
-    font: "inherit",
-    textAlign: "start",
-    cursor: "pointer",
     "--rf-ink": "var(--rf-paper-ink)",
     "--rf-muted": "var(--rf-paper-muted)",
     "--rf-focus": "var(--rf-paper-focus)",
     "--rf-error": "var(--rf-paper-error)",
+    display: "flex",
+    position: "relative",
+    alignItems: "center",
+    width: "100%",
+    minWidth: "0",
+    minHeight: "46px",
+    padding: "0",
+    border: "1px solid var(--rf-control-edge)",
+    borderRadius: "2px",
+    background: "var(--rf-paper)",
+    color: "var(--rf-paper-ink)",
+    font: "inherit",
+    textAlign: "start",
+    cursor: "pointer",
   },
   ".rf-select-value": {
     fontSize: "16px",
@@ -36,125 +34,68 @@ export const selectStyles = defineGlobalStyles({
     alignItems: "center",
     flex: "1 1 0",
     minWidth: "0",
-    padding: "8px 12px",
-    border: "1px solid #ac9068",
-    background: "var(--rf-paper-texture)",
-    boxShadow: "inset 0 2px 0 #5a412326",
+    padding: "10px 12px",
     overflowWrap: "anywhere",
     lineHeight: "1.5",
   },
   ".rf-select-opener": {
     display: "flex",
-    position: "relative",
     flex: "0 0 44px",
     minHeight: "44px",
     alignItems: "center",
     justifyContent: "center",
-    border: "1px solid #182024",
-    borderTopColor: "#8e9894",
-    background: "var(--rf-iron-texture)",
-    color: "var(--rf-iron-ink)",
-    boxShadow: "0 2px 0 #1d2527, inset 1px 0 0 #aab4af26",
-    transition: "transform 160ms var(--rf-ease), box-shadow 160ms",
+    color: "var(--rf-paper-muted)",
   },
-  ".rf-select-opener svg": {
-    transition: "transform 160ms var(--rf-ease)",
-  },
-  ".rf-select-opener::after": {
-    content: '""',
-    position: "absolute",
-    insetInline: "12px",
-    bottom: "5px",
-    height: "3px",
-    borderTop: "1px solid #171f21",
-    borderBottom: "1px solid #88938b70",
-    pointerEvents: "none",
-  },
-  ".rf-select-trigger:hover:not([data-disabled], [data-readonly]) .rf-select-opener":
-    {
-      borderTopColor: "#dfd6bb",
-      color: "#f3d17a",
-    },
-  ".rf-select-trigger[data-popup-open] .rf-select-opener": {
-    transform: "translateY(2px)",
-    boxShadow: "inset 0 2px 0 #10171980",
-    borderTopColor: "#182024",
+  ".rf-select-trigger:hover:not([data-disabled], [data-readonly])": {
+    borderColor: "var(--rf-paper-ink)",
   },
   ".rf-select-trigger[data-popup-open] .rf-select-opener svg": {
     transform: "rotate(180deg)",
   },
   ".rf-theme .rf-select-trigger:focus-visible": {
     outline: "3px solid var(--rf-focus)",
-    outlineOffset: "5px",
+    outlineOffset: "3px",
   },
   ".rf-select-value[data-placeholder]": {
-    color: "#665541",
+    color: "var(--rf-paper-muted)",
   },
   ".rf-select-trigger[data-readonly]": {
     cursor: "default",
-  },
-  ".rf-select-trigger[data-readonly] .rf-select-opener": {
-    boxShadow: "none",
     borderStyle: "dashed",
-  },
-  ".rf-select-trigger[data-invalid] .rf-select-value": {
-    borderColor: "var(--rf-ruby)",
-    boxShadow: "inset 3px 0 0 var(--rf-ruby)",
   },
   ".rf-select-trigger[data-disabled]": {
     cursor: "not-allowed",
-    opacity: "1",
-  },
-  ".rf-select-trigger[data-disabled] .rf-select-value": {
-    background: "var(--rf-paper-grain), #e0d7c4",
-    color: "#655743",
     borderStyle: "dashed",
-  },
-  ".rf-select-trigger[data-disabled] .rf-select-opener": {
-    color: "#d6d4c9",
-    boxShadow: "none",
+    background: "var(--rf-paper-light)",
+    color: "var(--rf-paper-muted)",
   },
   ".rf-select-positioner": {
     minWidth: "0",
   },
   ".rf-select-popup": {
+    "--rf-ink": "var(--rf-paper-ink)",
+    "--rf-muted": "var(--rf-paper-muted)",
+    "--rf-focus": "var(--rf-paper-focus)",
+    "--rf-error": "var(--rf-paper-error)",
     position: "relative",
     minWidth: "min(var(--anchor-width), calc(100vw - 24px))",
     maxWidth: "calc(100vw - 24px)",
     maxHeight: "var(--available-height)",
     overflow: "auto",
     overscrollBehavior: "contain",
-    background: "var(--rf-paper-texture)",
+    background: "var(--rf-paper)",
     color: "var(--rf-paper-ink)",
-    border: "1px solid #8d704c",
-    paddingTop: "6px",
-    borderRadius: "1px 2px 3px 1px",
+    border: "1px solid var(--rf-paper-edge)",
+    borderRadius: "2px",
     boxShadow: "var(--rf-depth-overlay)",
     transformOrigin: "var(--transform-origin)",
-    transition: "opacity 160ms, transform 160ms var(--rf-ease)",
-    "--rf-ink": "var(--rf-paper-ink)",
-    "--rf-muted": "var(--rf-paper-muted)",
-    "--rf-focus": "var(--rf-paper-focus)",
-    "--rf-error": "var(--rf-paper-error)",
-  },
-  ".rf-select-popup::before": {
-    content: '""',
-    display: "block",
-    position: "absolute",
-    insetInline: "0",
-    top: "0",
-    height: "6px",
-    borderBottom: "1px solid #1d2527",
-    background: "var(--rf-iron-texture)",
-    boxShadow: "inset 0 1px 0 #b4b7a84d",
-    pointerEvents: "none",
+    transition: "opacity 140ms",
   },
   ".rf-select-popup:is([data-starting-style], [data-ending-style])": {
     opacity: "0",
-    transform: "translateY(-4px)",
   },
   ".rf-select-list": {
-    padding: "4px 6px 6px",
+    padding: "4px",
   },
   ".rf-select-item": {
     display: "flex",
@@ -163,7 +104,6 @@ export const selectStyles = defineGlobalStyles({
     gap: "12px",
     padding: "10px 12px",
     minHeight: "44px",
-    borderBottom: "1px solid #b9a27c70",
     cursor: "default",
     outline: "none",
   },
@@ -174,116 +114,67 @@ export const selectStyles = defineGlobalStyles({
   ".rf-select-check": {
     display: "flex",
     flexShrink: "0",
-    padding: "2px",
-    border: "1px solid #184b35",
-    color: "#184b35",
+    color: "var(--rf-sapphire)",
   },
   ".rf-select-item[data-selected]": {
     fontWeight: "700",
   },
   ".rf-select-item[data-highlighted]": {
-    background: "var(--rf-paper-grain), #e3b958",
-    color: "#30220f",
-    outline: "2px solid #665031",
+    background: "var(--rf-paper-light)",
+    outline: "2px solid var(--rf-paper-focus)",
     outlineOffset: "-2px",
   },
   ".rf-select-item[data-disabled]": {
-    color: "#6f6250",
+    color: "var(--rf-paper-muted)",
     textDecoration: "line-through",
-    textDecorationThickness: "1px",
   },
-  "@media (prefers-reduced-motion: reduce)": {
-    ".rf-select-opener, .rf-select-opener svg, .rf-select-popup": {
-      transition: "none",
+  '.rf-select-field[data-surface="integrated"] .rf-select-trigger, :where(.rf-paper-surface) .rf-select-field[data-surface="auto"] .rf-select-trigger':
+    {
+      background: "transparent",
+      border: "0",
+      borderBottom: "1px solid var(--rf-control-edge)",
+      borderRadius: "0",
+      boxShadow: "none",
     },
-    ".rf-select-trigger[data-popup-open] .rf-select-opener, .rf-select-trigger[data-popup-open] .rf-select-opener svg, .rf-select-popup:is([data-starting-style], [data-ending-style])":
-      {
-        transform: "none",
-      },
+  '.rf-select-field[data-surface] .rf-select-trigger[aria-invalid="true"]': {
+    borderColor: "var(--rf-paper-error)",
+    borderBottom: "2px solid var(--rf-paper-error)",
+    boxShadow: "inset 2px 0 0 var(--rf-paper-error)",
   },
+  ".rf-select-field[data-surface] .rf-select-trigger:is([data-disabled], [data-readonly])":
+    {
+      borderBottomStyle: "dashed",
+    },
   "@media (forced-colors: active)": {
-    ".rf-select-trigger, .rf-select-value, .rf-select-opener, .rf-select-popup":
-      {
-        background: "Canvas",
-        color: "CanvasText",
-        borderColor: "CanvasText",
-        boxShadow: "none",
-      },
-    ".rf-theme .rf-select-trigger:focus-visible": {
-      outlineColor: "Highlight",
+    ".rf-select-trigger, .rf-select-popup": {
+      background: "Canvas",
+      color: "CanvasText",
+      borderColor: "CanvasText",
+      boxShadow: "none",
     },
-    ".rf-select-value[data-placeholder]": {
+    ".rf-select-opener, .rf-select-check": {
       color: "CanvasText",
     },
-    ".rf-select-trigger:hover:not([data-disabled], [data-readonly]) .rf-select-opener, .rf-select-trigger[data-popup-open] .rf-select-opener":
-      {
-        color: "ButtonText",
-        borderColor: "ButtonText",
-        boxShadow: "none",
-      },
-    ".rf-select-trigger[data-invalid] .rf-select-value": {
-      borderColor: "CanvasText",
-      borderInlineStartWidth: "4px",
-      boxShadow: "none",
+    ".rf-theme .rf-select-trigger:focus-visible": {
+      outlineColor: "Highlight",
     },
     ".rf-select-item[data-highlighted]": {
       background: "Highlight",
       color: "HighlightText",
       outlineColor: "HighlightText",
+      forcedColorAdjust: "none",
     },
-    ".rf-select-check": {
-      color: "inherit",
-      borderColor: "currentColor",
+    ".rf-select-item[data-highlighted] .rf-select-check": {
+      color: "HighlightText",
     },
-    ".rf-select-opener::after, .rf-select-popup::before": {
-      background: "Canvas",
-      borderColor: "CanvasText",
-      boxShadow: "none",
+    ".rf-select-trigger[data-disabled], .rf-select-item[data-disabled]": {
+      color: "GrayText",
+      borderColor: "GrayText",
     },
-    ".rf-select-trigger[data-disabled] .rf-select-value, .rf-select-trigger[data-disabled] .rf-select-opener, .rf-select-item[data-disabled]":
-      {
-        background: "Canvas",
-        color: "GrayText",
-        borderColor: "GrayText",
-      },
     '.rf-select-field[data-surface] .rf-select-trigger[aria-invalid="true"]': {
       borderColor: "CanvasText",
       borderStyle: "dashed",
       boxShadow: "none",
     },
-  },
-  '.rf-select-field[data-surface="integrated"] .rf-select-trigger': {
-    background: "transparent",
-    paddingInlineStart: "0",
-    border: "0",
-    borderBottom: "1px solid var(--rf-control-edge)",
-    boxShadow: "none",
-  },
-  ':where(.rf-paper-surface) .rf-select-field[data-surface="auto"] .rf-select-trigger':
-    {
-      background: "transparent",
-      paddingInlineStart: "0",
-      border: "0",
-      borderBottom: "1px solid var(--rf-control-edge)",
-      boxShadow: "none",
-    },
-  '.rf-select-field[data-surface="integrated"] .rf-select-value': {
-    background: "transparent",
-    border: "0",
-    boxShadow: "none",
-  },
-  ':where(.rf-paper-surface) .rf-select-field[data-surface="auto"] .rf-select-value':
-    {
-      background: "transparent",
-      border: "0",
-      boxShadow: "none",
-    },
-  '.rf-select-field[data-surface] .rf-select-trigger[aria-invalid="true"]': {
-    borderBottom: "2px solid var(--rf-paper-error)",
-    boxShadow: "inset 2px 0 0 var(--rf-paper-error)",
-  },
-  ".rf-select-field[data-surface] .rf-select-trigger:disabled": {
-    color: "var(--rf-paper-muted)",
-    borderBottomStyle: "dashed",
   },
 });

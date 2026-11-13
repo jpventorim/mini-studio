@@ -33,8 +33,8 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="rf-codex-section rf-paper-surface">
-      <div className="rf-codex-heading">
+    <section className="rf-catalog-section rf-paper-surface">
+      <div className="rf-catalog-heading">
         <div>
           <h2>{title}</h2>
           <p>{description}</p>
@@ -54,46 +54,33 @@ function Specimen({ name, children }: { name: string; children: ReactNode }) {
   );
 }
 
-const swatches = [
-  { name: "Candle gold", color: "#e3b958", texture: "var(--rf-gold-texture)" },
-  { name: "Ruby wax", color: "#912e38" },
-  { name: "Forest enamel", color: "#236044" },
-  { name: "Sapphire ink", color: "#2a537e" },
-];
-
 function AllComponents() {
   const theme = useTheme() === "dark" ? darkTheme : lightTheme;
   const materialSwatches = [
-    swatches[0],
+    { name: "Working sheet", color: theme["--rf-paper"] },
     {
-      name: "Sawn oak",
-      color: theme["--rf-wood-color"],
-      texture: "var(--rf-wood-texture)",
+      name: "Graph canvas",
+      color: theme["--rf-canvas"],
+      texture: "var(--rf-canvas-texture)",
     },
-    {
-      name: "Coarse iron",
-      color: theme["--rf-iron-color"],
-      texture: "var(--rf-iron-texture)",
-    },
-    ...swatches.slice(1),
-    {
-      name: "Warm parchment",
-      color: theme["--rf-paper"],
-      texture: "var(--rf-paper-texture)",
-    },
+    { name: "Graphite", color: theme["--rf-paper-ink"] },
+    { name: "Blue ink", color: "#285a88" },
+    { name: "Red ink", color: "#a13742" },
+    { name: "Green ink", color: "#2f684f" },
+    { name: "Ochre marker", color: "#e7c66b" },
   ];
   return (
-    <div className="rf-codex">
-      <header className="rf-codex-header">
+    <div className="rf-catalog">
+      <header className="rf-catalog-header">
         <h1>Design system</h1>
         <p>
-          Base components inspired by medieval tabletop materials: wood grain,
-          coarse iron, leather, and fibrous paper.
+          Base components inspired by graph notebooks, printed reference sheets,
+          and the paper around a tabletop RPG session.
         </p>
       </header>
       <Section
         title="Materials and colors"
-        description="Sawn timber, fibrous paper, coarse iron, and vivid paint."
+        description="Quiet graph paper, plain working sheets, and a restrained ink palette."
       >
         <div className="rf-swatch-grid">
           {materialSwatches.map((swatch) => (
@@ -195,9 +182,9 @@ function AllComponents() {
       >
         <div className="rf-demo-grid">
           <Specimen name="Panel">
-            <Panel>
+            <Panel clipped>
               <h4 className="rf-title">Panel</h4>
-              <p className="rf-muted">A framed surface for related content.</p>
+              <p className="rf-muted">A plain sheet for related content.</p>
             </Panel>
           </Specimen>
           <Specimen name="Alert">

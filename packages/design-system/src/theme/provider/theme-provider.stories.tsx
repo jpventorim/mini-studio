@@ -43,10 +43,10 @@ function ThemeComparison({ overlays = false }: { overlays?: boolean }) {
   return (
     <section className="rf-context-scene">
       <h1 className="rf-title">
-        {overlays ? "Overlay themes" : "Light and dark materials"}
+        {overlays ? "Overlay themes" : "Theme compatibility"}
       </h1>
       <p className="rf-muted">
-        The construction stays consistent. Material tones change with the theme.
+        Paper surfaces retain their theme across forms and overlays.
       </p>
       <div className="rf-theme-comparison">
         {(["light", "dark"] as const).map((theme) => (
@@ -99,7 +99,9 @@ export const Light: StoryObj = {
   render: () => (
     <section className="rf-context-scene">
       <h1 className="rf-title">Light theme</h1>
-      <p className="rf-muted">Pale timber, warm paper, and coarse iron.</p>
+      <p className="rf-muted">
+        Pale graph paper, warm white sheets, and blue ink.
+      </p>
       <Panel>
         <ReferenceForm />
       </Panel>
@@ -111,7 +113,9 @@ export const Dark: StoryObj = {
   render: () => (
     <section className="rf-context-scene">
       <h1 className="rf-title">Dark theme</h1>
-      <p className="rf-muted">Dark timber, muted parchment, and coarse iron.</p>
+      <p className="rf-muted">
+        Dark palette preview. Visual refinement follows the light review.
+      </p>
       <Panel>
         <ReferenceForm />
       </Panel>

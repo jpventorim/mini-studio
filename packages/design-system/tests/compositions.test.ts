@@ -38,7 +38,7 @@ componentTests(
         shadow: "none",
       });
       const sheet = await page
-        .locator(".rf-textarea-tablet")
+        .locator(".rf-textarea-frame")
         .evaluate((element) => ({
           border: getComputedStyle(element).borderTopWidth,
           clip: getComputedStyle(element, "::before").display,

@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A stamped gold peg seats in one iron-ringed wooden socket. Use arrow keys to move between available choices; labels also select their peg.",
+          "Fine selection rings with a small ink center and a stronger selected label. Full targets and standard keyboard behavior remain.",
       },
     },
   },

@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "An inlaid check seated in a timber and forged-iron socket. Supports mixed and disabled states with a full 44px interaction target.",
+          "A printed square and crisp ink check or mixed-state dash, with a full 44px interaction target.",
       },
     },
   },

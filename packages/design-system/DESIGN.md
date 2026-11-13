@@ -1,189 +1,148 @@
-# Foundry UI — design direction
+# Foundry UI — paper design system
 
-Status: third iteration. A living design brief, not a finished brand.
+The design system takes its character from graph notebooks, printed reference
+sheets, and handwritten session notes. It supports 19 base components. Light is
+the active design target; the dark palette stays functional while its visual
+review is deferred.
 
-## The table, not the dashboard
+[All components](http://localhost:6006/?path=/story/design-system-all-components--default)
+is the working system.
 
-Build objects assembled on a medieval writing table: sawn wood, fibrous paper,
-stitched hide, wax, and coarse forged iron. A control needs a plausible material,
-construction, and moving part. Texture and cast shadows explain that object.
+## Design purpose
 
-This package contains **base components only**. Higher-level Library components
-will follow actual requirements. Do not invent RPG product features.
+These are controls for doing work and reading information. Familiar interaction,
+clear labels, and dependable state changes take priority over decorative novelty.
+Paper gives the composition a place; controls do not each need a material story.
+Keep factual copy and existing component behavior intact during visual refinement.
+Higher-level product features need their own requirements.
 
-## Feedback defining this pass
+## Surfaces
 
-- Retire the muddy brown “old brass” primary color. Bright candle gold is an
-  accent; saturated jewel colors provide painted actions and status seals.
-- Replace soft, inflated cards with layered, framed material objects.
-- Wood has visible grain and cut edges. Paper has fibers and imperfect edges.
-  Iron is dark, pitted, irregular, and matte, never polished chrome.
-- Switches are mechanical latches, alerts are posted notices, accordions unfold
-  from bindings, and tabs are tangible ledger markers held in a rail.
-- Every component must participate in this language, not just the showcase.
-- Showcase copy names the design system, its material inspiration, and component
-  categories directly. No invented slogans, volume labels, or promotional subtitles.
+- **Canvas:** pale graph paper with a quiet 24px square grid and 1px lines. It
+  supplies the reference to notebooks. Keep the grid behind the work.
+- **Working sheet:** warm white and plain. One thin edge and a shallow contact
+  shadow establish a sheet. Text, menus, and overlays need quiet backgrounds.
+- **Writing area:** a standalone box or an integrated baseline inside paper.
+  Multiline ruling uses a 24px rhythm and stays below the text baseline.
+- **Attachments:** one optional stationery clip on a Panel. It is decorative,
+  does not intercept input, and never overlaps labels or focus indicators.
 
-## Material contract
+Do not repeat complete sheets around nested controls. Badge, Alert, Avatar, and
+Tabs do not get sheet shadows or extra frames. Straight edges and crisp type do
+most of the work. The default system uses no grain, photographic texture, random
+noise, stains, or distressed text. Grids and ruling may disappear in forced colors
+without removing information.
 
-**Wood:** directional grain, visible cut edges, firm corners. Useful for frames,
-rails, bases, and moving pieces. Avoid orange plastic finishes and large glowing
-gradients. Grain must never obscure text.
+## Palette
 
-**Iron:** charcoal/blue-gray with fine pits, scratches, and narrow edge highlights.
-Use it for straps, keepers, brackets, and frames. Fasteners must serve construction.
-Avoid chrome and decorative rivet spam.
+Preserve these colors during the refinement pass. Blue ink is the default primary
+action; semantic tones retain explicit text or symbols so color is never the only
+state cue.
 
-**Paper:** warm, fibrous, readable, with offset layers, fold marks, or slight edge
-irregularity. No pillow-like inner glow or softly raised slab.
+| Role                | Value     | Use                                    |
+| ------------------- | --------- | -------------------------------------- |
+| Canvas              | `#F1F0E9` | Graph-paper background                 |
+| Sheet               | `#FFFEF8` | Reading and writing                    |
+| Alternate sheet     | `#F6F4EC` | Quiet grouping                         |
+| Primary ink         | `#282D32` | Text and strong outlines               |
+| Secondary ink       | `#58616B` | Help and secondary labels              |
+| Sheet edge          | `#C6C9C7` | Decorative sheet boundaries            |
+| Control edge        | `#737F89` | Necessary interactive boundaries       |
+| Grid line           | `#DCE4E6` | Decorative graph lines                 |
+| Blue ink / sapphire | `#285A88` | Primary actions, selection, focus      |
+| Red ink / ruby      | `#A13742` | Errors and destructive actions         |
+| Green ink / emerald | `#2F684F` | Positive states                        |
+| Ochre / gold        | `#E7C66B` | Restrained highlighting with dark text |
 
-**Leather:** dark grained hide, a cut edge, restrained stitching, and ivory ink.
-Useful for bindings and tabs. Do not mistake a dark flat rectangle for leather.
+Tones are `sapphire`, `ruby`, `emerald`, `gold`, and `neutral`. Small status labels
+can use pale tone tints and dark lettering. Gold text and symbols require dark
+ink on pale surfaces. Decorative sheet edges and grid lines are not sufficient
+interactive boundaries.
 
-**Wax and paint:** ruby, emerald, sapphire, and small gold accents give vibrancy.
-Write status meaning as well as coloring it. Gold is never a brown blanket over
-all the controls.
+Measure actual states: 4.5:1 for ordinary text and 3:1 for large text and necessary
+control/state indicators. Maintain legible disabled labels. Focus uses a distinct
+3px ink outline, with space around the target and no clipping.
 
-Shared deterministic vector textures live in `src/theme/materials.ts`. Panda
-exposes `--rf-wood-texture`, `--rf-iron-texture`, `--rf-paper-texture`, and
-`--rf-gold-texture`, plus the corresponding grain layers. No downloads or runtime
-image effects are needed. Component styles remain in their own folders.
+## Typography, spacing, and motion
 
-## Scene and theme contract
+Georgia provides short sheet and section headings; the system sans-serif handles
+labels, controls, body text, and initials. Monospace is reserved for code and
+measured values. Avoid added type styles merely to make controls look special.
+Use a 15px body with comfortable line height, an 8px spacing rhythm, and 4px
+subdivisions. Use normal UI density and let wrapping content grow vertically.
+Do not add decorative kickers or sequence numbers above headings.
 
-Use quiet timber as the ambient canvas, paper or hide as the working area, and
-iron or painted wood as hardware. The canvas grain has less contrast and detail
-than component timber. Material edges and contact shadows explain where objects
-touch; repeating a complete frame around every nested field obscures that hierarchy.
+Visible marks can be small while their targets remain at least 44px. Radio marks,
+slider thumbs, and switch tracks use larger invisible targets. State changes
+should be immediate; brief transitions clarify movement rather than stage a
+performance. Reduced motion removes transitions and looping decoration.
 
-Both themes preserve construction and dimensions. Dark mode uses darker timber
-and muted parchment; paper keeps dark ink. Ambient labels use ivory on dark
-timber. Do not invert paper into black or inherit ambient ivory onto paper.
+## Component vocabulary
 
-| Material role       | Light     | Dark      |
-| ------------------- | --------- | --------- |
-| Canvas              | `#d6ccba` | `#292722` |
-| Ambient ink         | `#302a23` | `#f4ecd8` |
-| Paper               | `#f4ecd9` | `#d9ccb0` |
-| Paper ink           | `#30291f` | `#2b251d` |
-| Paper secondary ink | `#655640` | `#564a37` |
-| Component timber    | `#66503a` | `#493a2e` |
-| Iron                | `#3b4548` | `#343e41` |
+| Component  | Current treatment                                                    |
+| ---------- | -------------------------------------------------------------------- |
+| Panel      | Plain sheet; `clipped` opts into one stationery clip                 |
+| Separator  | Fine printed rule in either orientation                              |
+| Button     | Ink-filled primary, outlined secondary, quiet text action            |
+| Badge      | Compact typeset label with a pale tone tint; no accent strip         |
+| Avatar     | Circular portrait or white initials on blue ink; no outer frame      |
+| Alert      | Clear status icon, title, and message; no accent rail or raised card |
+| TextField  | Standalone writing box or baseline integrated in paper               |
+| Textarea   | Resizable writing area with text-aligned ruling                      |
+| Checkbox   | Printed square with a crisp ink check or mixed dash                  |
+| Switch     | Small track and thumb; position and contrast show state              |
+| RadioGroup | Fine rings, small ink centers, and stronger selected labels          |
+| Select     | Writing box and chevron; options on a plain sheet                    |
+| Slider     | Continuous line and round thumb; no decorative tick marks            |
+| Tabs       | Unframed text index, selected underline, and open content            |
+| Accordion  | Printed section headings and rules revealing the same sheet          |
+| Dialog     | Raised working sheet with a quiet scrim and clear close action       |
+| Popover    | Small reference note and a directional pointer                       |
+| Tooltip    | Compact high-contrast ink label                                      |
+| Progress   | Printed track and ink fill with explicit value/status                |
 
-`src/theme/contracts.ts` owns theme values and material-specific ink aliases.
-`ThemeProvider` supplies explicit theme scope and context; portal positioners
-receive that scope so mixed-theme overlays retain the correct material colors.
-Texture variables are redeclared per scope because CSS resolves nested custom
-property references where they are declared.
+The selected tab underline moves between labels in 160ms using the shared easing.
+Reduced motion places it immediately. It carries selection without ornamenting
+every tab.
+Status icons differ by meaning. Switch labels name the setting; the switch's
+accessible checked state supplies on/off information without printed words.
 
-Use shared depth tokens for paper, inset writing, mounted controls, pressed
-controls, and overlays. Paper rests close to its backing. Mounted controls have
-a short hard cut edge and contact shadow. Only overlays cast a larger shadow.
-Keep edge lighting subtle and consistently above the object; avoid per-component
-spotlight gradients and large diffuse glows.
+## Implementation contract
 
-Fields default to `surface="auto"`: an independent paper insert on timber or
-leather, an integrated writing area inside paper. Explicit `mounted` and
-`integrated` overrides express the intended construction. A standalone textarea
-has two iron clips and fine ruling; inside paper the extra frame and clips disappear.
-Its native resize handle, persistent label, help, errors, and focus remain.
+`src/theme/contracts.ts` owns scoped theme values and paper ink aliases;
+`foundation.ts` owns shared rules; `materials.ts` owns the graph-paper background.
+Keep Panda defaults aligned with scoped light values. Component-specific styles
+stay beside each component. Reuse semantic surface, edge, ink, focus, and depth
+roles instead of adding per-component palettes.
 
-## Accent palette and light defaults
+`ThemeProvider` preserves nested scopes and portal theme inheritance. Theme
+switches do not change geometry or lose form values. Components on paper use
+paper ink, including inside a dark canvas.
 
-| Token         | Value     | Role                                        |
-| ------------- | --------- | ------------------------------------------- |
-| ink           | `#30291f` | Body text on paper                          |
-| muted         | `#655640` | Secondary text on paper                     |
-| paper         | `#f4ecd9` | Main writing surface                        |
-| paperLight    | `#fbf5e8` | Lighter paper and inputs                    |
-| border        | `#b5a080` | Paper and cut-edge detail                   |
-| gold          | `#e3b958` | Candle-gold accents, with dark lettering    |
-| ruby          | `#912e38` | Red paint, destructive actions, error seals |
-| emerald       | `#236044` | Green paint, positive states, confirmation  |
-| sapphire      | `#2a537e` | Blue paint, information, cool emphasis      |
-| focus         | `#204f91` | Focus against pale surfaces                 |
-| iron material | `#3b4548` | Coarse iron, ivory lettering                |
-| wood material | `#66503a` | Timber frames, ivory lettering              |
+Panel is paper-only and accepts `clipped`. `TextField`, `Textarea`, and `Select`
+retain `surface="auto"`, `"mounted"`, and `"integrated"`: auto integrates inside
+paper and uses a writing box outside it; explicit values override this behavior.
 
-Panda owns accent/default tokens in `panda.config.ts`; theme contracts override
-material values per scope. Tones are `gold`, `ruby`, `emerald`,
-`sapphire`, and `neutral`. The unpublished package's old `brass` tone is retired.
-Each tone supplies `--rf-on-accent`. Gold fills need dark text. Small gold text
-on pale paper fails readability; use dark ink instead. Disabled labels stay legible.
+## Accessibility and verification
 
-## Physical vocabulary
+Keep Base UI semantics, labels, linked help/errors, keyboard behavior, focus
+visibility, and overlay behavior. Use native semantic elements for simple content.
+Decorations stay out of the accessibility tree and do not intercept input.
+Dialogs preserve focus trapping, Escape, and focus restoration; tooltips never
+carry essential information alone.
 
-| Component  | Construction direction                                   |
-| ---------- | -------------------------------------------------------- |
-| Button     | Painted wooden/iron action plate with a mechanical press |
-| Badge      | Cloth, paper, or wax marker with a written status        |
-| Panel      | Timber-framed writing surface or bound hide              |
-| Separator  | A physical rule, seam, or forged divider                 |
-| Avatar     | Portrait/initials medallion in a coarse frame            |
-| Alert      | Posted paper notice with fasteners and a status seal     |
-| TextField  | Writable paper inset with a definite frame               |
-| Textarea   | Writing tablet or ruled paper inset                      |
-| Checkbox   | A peg, seal, or iron check in a framed socket            |
-| Switch     | Sliding iron bolt with keepers, grip, and end positions  |
-| RadioGroup | Mutually exclusive pegs or stamped circular selections   |
-| Select     | Framed selection label with a paper list beneath         |
-| Slider     | Carriage traveling along a graduated mechanical rail     |
-| Tabs       | Ledger labels in a binding or coarse iron rail           |
-| Accordion  | Sections unfolding from physical rails or hinged covers  |
-| Dialog     | Opened folio or framed sheet above the table             |
-| Popover    | Small attached field note with a physical attachment     |
-| Tooltip    | Readable label with a restrained material edge           |
-| Progress   | Painted fill traveling through a constructed channel     |
+Review empty/filled, selected, invalid, readonly, disabled, and open states where
+supported. Include long labels, narrow layouts, keyboard input, reduced motion,
+and forced colors. Run focused browser checks per component and the full suite
+at integration milestones. Automated checks supplement rendered inspection;
+screen-reader and product-context review remain necessary.
 
-## Typography and layout
+## Iteration
 
-Georgia is for short headings; system sans-serif is for controls and dense copy.
-No blackletter, faux runes, or distressed body text. Body text is 15px with a 1.6
-line height. Aim for 44px targets and an 8px spacing rhythm with 4px subdivisions.
-Physical detail must not clip focus, cover labels, or cause mobile page overflow.
-
-## Motion
-
-Move parts according to construction: bolts travel through keepers, buttons press
-into backing, folded paper opens below its binding, carriages follow rails. Avoid
-floating, wobbling, bouncing, and unexplained scale transforms. Most motion takes
-140–240ms; progress may take 400ms. Only indeterminate work may loop.
-
-Reduced motion removes animation and transform feedback while keeping focus and
-state obvious. Interaction must never wait for an animation to finish.
-
-## Accessibility contract
-
-- Preserve Base UI behavior and semantics. Never replace controls with clickable
-  divs. Texture must not hide focus, errors, or disabled state.
-- Persistent labels and linked help/errors are required. Decorative fasteners and
-  icons stay hidden from assistive technology. Placeholders are not labels.
-- Dialogs trap focus, close with Escape, and restore it. Popovers and tooltips work
-  without a mouse; essential information is never tooltip-only.
-- Status meaning is written as well as colored. Maintain WCAG AA text contrast,
-  readable disabled labels, practical targets, and explicit focus rings.
-- Audit every story with axe, open overlays, keyboard interaction, reduced motion,
-  narrow layouts, and forced colors. Later product and screen-reader review is
-  still needed; automated checks cannot certify accessibility.
-
-## Iteration method
-
-One agent owns each base component for three rounds: (1) physical form and
-construction, (2) critique and refinement of materials, mechanics, states, and
-accessibility, and (3) final details and targeted verification. Shared material
-integration, visual review, and browser verification happen centrally.
-`design-review.md` records decisions and findings.
-
-Storybook retains
-**Base** and **Design system / All components**, with **Compositions** and
-**Themes** for contextual review. The desktop app
-stays an empty shell. No new product components are in scope.
-
-## Still open
-
-1. What balance of wood, paper, and iron works in dense everyday tools?
-2. Which jewel color should dominate primary actions?
-3. Is leather a core material or occasional binding detail?
-4. How much parchment should remain visible in dense dark-theme screens?
-5. Which additional base primitives do real workflows require next?
-6. What name, symbol, and voice should become the final brand?
+Keep changes small: translate a component, inspect its states and context, then
+resolve details and verify. Use the existing palette and Button treatment as anchors when deciding
+whether a change improves clarity. Record what was actually reviewed and tested
+in the commit history. User design acceptance is separate from agent verification.
+The palette and Button are the anchors for this pass. Continue dark visual design
+after the light review. The desktop shell and new product features are outside
+this design-system work.

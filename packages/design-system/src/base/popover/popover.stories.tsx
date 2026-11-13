@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A fibrous field note attached by an iron keeper. Opens from a named trigger and returns focus when dismissed.",
+          "A small paper reference note with a directional pointer. Opens from a named trigger and restores focus on dismissal.",
       },
     },
   },
@@ -39,11 +39,11 @@ export const LongNote: StoryObj = {
     >
       {[
         "Keep the working notes beside the tools they describe. Leave enough room for a clear heading and legible writing.",
-        "The keeper holds the sheet at its edge. Its small iron pin takes the strain while the paper remains easy to replace.",
-        "Read each measurement before marking the timber. A short pause at the table saves a longer repair later.",
+        "The reference note stays close to its trigger while leaving room for a readable title and description.",
+        "Read each measurement before adding it to the sheet. A clear annotation makes the next review easier.",
         "Keep the edge of the writing surface clear. Tools and loose offcuts belong beside the note rather than across its words.",
         "When a note grows longer than the space around it, the paper can be read by scrolling without moving the surrounding work.",
-        "Close the sheet with its iron plate or press Escape to return to the control that opened it.",
+        "Close the note with its close button or press Escape to return to the control that opened it.",
       ].map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
       ))}

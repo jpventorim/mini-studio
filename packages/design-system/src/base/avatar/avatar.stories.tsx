@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A coarse iron portrait medallion with a recessed paper initials insert. The frame stays compact at every size.",
+          "A circular portrait or compact initials, without a surrounding frame.",
       },
     },
   },

@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Small fibrous paper markers with a crimped painted binding. Status is written in dark ink; tone colors the binding.",
+          "A compact status label with a soft ink tint. No accent strip or decorative border.",
       },
     },
   },

@@ -16,23 +16,17 @@ export const foundationStyles = defineGlobalStyles({
     "--rf-emerald": "token(colors.emerald)",
     "--rf-sapphire": "token(colors.sapphire)",
     "--rf-focus": "token(colors.focus)",
-    "--rf-radius": "3px",
+    "--rf-radius": "2px",
     "--rf-font-body": '"Segoe UI", ui-sans-serif, system-ui, sans-serif',
     "--rf-font-display": 'Georgia, "Times New Roman", serif',
     "--rf-ease": "cubic-bezier(0.2, 0.8, 0.2, 1)",
-    "--rf-shadow": "1px 3px 0 #30271e70, 2px 5px 0 #20190e1f",
-    "--rf-shadow-contact": "1px 2px 2px #21180e26",
-    "--rf-depth-paper": "0 1px 0 var(--rf-paper-edge), 1px 2px 2px #21180e26",
-    "--rf-depth-inset": "inset 0 1px 1px #30271e20",
-    "--rf-depth-mounted": "0 2px 0 var(--rf-wood-edge), 1px 3px 2px #21180e33",
-    "--rf-depth-pressed":
-      "inset 0 1px 2px #21180e40, 0 1px 0 var(--rf-wood-edge)",
-    "--rf-depth-overlay":
-      "0 2px 0 var(--rf-wood-edge), 3px 10px 20px #17120e40",
-    "--rf-edge-light": "#fff4df40",
-    "--rf-rule": "#66554120",
+    "--rf-shadow-contact": "1px 2px 3px #282d3214",
+    "--rf-depth-paper": "0 1px 0 var(--rf-paper-edge), 1px 3px 4px #282d3212",
+    "--rf-depth-pressed": "inset 0 1px 2px #282d3220",
+    "--rf-depth-overlay": "0 1px 0 var(--rf-paper-edge), 0 8px 24px #282d3226",
+    "--rf-rule": "var(--rf-grid)",
     "--rf-motion-control": "160ms",
-    "--rf-motion-sheet": "220ms",
+    "--rf-motion-sheet": "180ms",
     "--rf-label-size": "14px",
   },
   '.rf-theme[data-theme="light"]': {
@@ -42,12 +36,9 @@ export const foundationStyles = defineGlobalStyles({
   },
   ".rf-theme": {
     ...materialTokens,
-    "--rf-depth-paper": "0 1px 0 var(--rf-paper-edge), 1px 2px 2px #21180e26",
-    "--rf-depth-mounted": "0 2px 0 var(--rf-wood-edge), 1px 3px 2px #21180e33",
-    "--rf-depth-pressed":
-      "inset 0 1px 2px #21180e40, 0 1px 0 var(--rf-wood-edge)",
-    "--rf-depth-overlay":
-      "0 2px 0 var(--rf-wood-edge), 3px 10px 20px #17120e40",
+    "--rf-depth-paper": "0 1px 0 var(--rf-paper-edge), 1px 3px 4px #282d3212",
+    "--rf-depth-pressed": "inset 0 1px 2px #282d3220",
+    "--rf-depth-overlay": "0 1px 0 var(--rf-paper-edge), 0 8px 24px #282d3226",
     color: "var(--rf-ink)",
     fontFamily: "var(--rf-font-body)",
     fontSize: "15px",
@@ -73,22 +64,17 @@ export const foundationStyles = defineGlobalStyles({
     padding: "24px",
     boxShadow: "var(--rf-depth-paper)",
   },
-  ".rf-surface-wood": {
-    "--rf-ink": "var(--rf-wood-ink)",
-    "--rf-muted": "#dfceb4",
-    "--rf-focus": "#b1d8ff",
-    color: "var(--rf-wood-ink)",
-    background: "var(--rf-wood-texture)",
-    padding: "24px",
-    border: "1px solid var(--rf-wood-edge)",
-    boxShadow: "var(--rf-depth-mounted)",
-  },
   ".rf-paper-surface": { ...paperSurface, colorScheme: "light" },
   ".rf-theme *, .rf-theme *::before, .rf-theme *::after": {
     boxSizing: "border-box",
   },
   ".rf-theme :is(button, input, textarea)": {
     font: "inherit",
+  },
+  ".rf-theme a": {
+    color: "var(--rf-focus)",
+    textDecoration: "underline",
+    textUnderlineOffset: "3px",
   },
   ".rf-theme :is(button, a, input, textarea, [tabindex]):focus-visible": {
     outline: "3px solid var(--rf-focus)",
@@ -97,32 +83,27 @@ export const foundationStyles = defineGlobalStyles({
   '.rf-theme [data-tone="gold"]': {
     "--rf-accent": "var(--rf-gold)",
     "--rf-tint": "#f8e9ad",
-    "--rf-bright": "#f3d17a",
-    "--rf-on-accent": "#30220f",
+    "--rf-on-accent": "#282d32",
   },
   '.rf-theme [data-tone="ruby"]': {
-    "--rf-on-accent": "#fff9ef",
+    "--rf-on-accent": "#fffef8",
     "--rf-accent": "var(--rf-ruby)",
     "--rf-tint": "#f8dce0",
-    "--rf-bright": "#de6170",
   },
   '.rf-theme [data-tone="emerald"]': {
-    "--rf-on-accent": "#fff9ef",
+    "--rf-on-accent": "#fffef8",
     "--rf-accent": "var(--rf-emerald)",
     "--rf-tint": "#d6e9d5",
-    "--rf-bright": "#58b882",
   },
   '.rf-theme [data-tone="sapphire"]': {
-    "--rf-on-accent": "#fff9ef",
+    "--rf-on-accent": "#fffef8",
     "--rf-accent": "var(--rf-sapphire)",
     "--rf-tint": "#dce8f5",
-    "--rf-bright": "#67a9e0",
   },
   '.rf-theme [data-tone="neutral"]': {
     "--rf-accent": "#3b4548",
     "--rf-tint": "#e1e4df",
-    "--rf-bright": "#a7b0ae",
-    "--rf-on-accent": "#fff9ef",
+    "--rf-on-accent": "#fffef8",
   },
   ".rf-stack": {
     display: "flex",
@@ -164,13 +145,6 @@ export const foundationStyles = defineGlobalStyles({
     color: "var(--rf-error)",
     fontWeight: "600",
   },
-  ".rf-eyebrow": {
-    color: "var(--rf-muted)",
-    fontSize: "0.7rem",
-    letterSpacing: "0.17em",
-    textTransform: "uppercase",
-    fontWeight: "750",
-  },
   ".rf-field": {
     display: "flex",
     flexDirection: "column",
@@ -184,15 +158,15 @@ export const foundationStyles = defineGlobalStyles({
   ".rf-popup": {
     background: "var(--rf-paper-texture)",
     color: "var(--rf-ink)",
-    border: "2px solid #6a5036",
-    borderRadius: "2px 4px 3px 2px",
-    boxShadow: "2px 4px 0 #20180e80, 4px 8px 14px #231b1426",
+    border: "1px solid var(--rf-paper-edge)",
+    borderRadius: "2px",
+    boxShadow: "var(--rf-depth-overlay)",
     transformOrigin: "var(--transform-origin)",
     transition: "opacity 160ms, transform 160ms var(--rf-ease)",
   },
   ".rf-popup:is([data-starting-style], [data-ending-style])": {
     opacity: "0",
-    transform: "translateY(-6px) scale(0.97)",
+    transform: "translateY(-3px)",
   },
   "@media (prefers-reduced-motion: reduce)": {
     ".rf-theme *, .rf-theme *::before, .rf-theme *::after, .rf-dialog-backdrop":
@@ -203,7 +177,7 @@ export const foundationStyles = defineGlobalStyles({
       },
   },
   "@media (forced-colors: active)": {
-    ".rf-theme, .rf-theme[data-theme], .rf-paper-surface, .rf-surface-wood": {
+    ".rf-theme, .rf-theme[data-theme], .rf-paper-surface": {
       "--rf-canvas-ink": "CanvasText",
       "--rf-canvas-muted": "CanvasText",
       "--rf-ink": "CanvasText",
@@ -213,6 +187,8 @@ export const foundationStyles = defineGlobalStyles({
       "--rf-paper": "Canvas",
       "--rf-paper-light": "Canvas",
       "--rf-paper-edge": "CanvasText",
+      "--rf-control-edge": "CanvasText",
+      "--rf-grid": "transparent",
       "--rf-focus": "Highlight",
       "--rf-paper-focus": "Highlight",
       "--rf-error": "CanvasText",

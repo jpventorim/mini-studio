@@ -2,18 +2,17 @@ import { expect } from "@rstest/core";
 import { componentTests } from "../../../tests/browser";
 
 componentTests("base-panel", {
-  "renders the light writing sheet above the timber backing": async (page) => {
+  "renders a plain readable sheet without a frame or grain": async (page) => {
     const surface = await page.locator(".rf-panel").evaluate((element) => {
-      const paper = getComputedStyle(element, "::before");
+      const paper = getComputedStyle(element);
       return {
-        content: paper.content,
         paper: paper.backgroundColor,
-        backing: getComputedStyle(element).backgroundColor,
+        ink: paper.color,
         grain: paper.backgroundImage,
       };
     });
-    expect(surface.content).not.toBe("none");
-    expect(surface.paper).not.toBe(surface.backing);
-    expect(surface.grain).toContain("data:image/svg+xml");
+    expect(surface.paper).not.toBe("rgba(0, 0, 0, 0)");
+    expect(surface.paper).not.toBe(surface.ink);
+    expect(surface.grain).toBe("none");
   },
 });

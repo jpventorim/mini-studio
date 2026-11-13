@@ -17,7 +17,7 @@ export function Accordion({
 }) {
   const Heading = `h${headingLevel}` as "h2" | "h3" | "h4";
   return (
-    <BaseAccordion.Root {...props} className="rf-accordion">
+    <BaseAccordion.Root {...props} className="rf-accordion rf-paper-surface">
       {items.map((item) => (
         <BaseAccordion.Item
           value={item.value}
@@ -31,7 +31,7 @@ export function Accordion({
           >
             <BaseAccordion.Trigger className="rf-accordion-trigger">
               <span>{item.title}</span>
-              <span className="rf-accordion-keeper" aria-hidden="true">
+              <span className="rf-accordion-indicator" aria-hidden="true">
                 <ChevronDown size={17} />
               </span>
             </BaseAccordion.Trigger>

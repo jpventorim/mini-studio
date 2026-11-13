@@ -7,30 +7,28 @@ export const textFieldStyles = defineGlobalStyles({
   },
   ".rf-text-field-frame": {
     minWidth: "0",
-    padding: "3px",
-    border: "1px solid var(--rf-wood-edge)",
-    borderRadius: "2px 1px 2px 1px",
-    background: "var(--rf-wood-texture)",
-    boxShadow: "var(--rf-depth-mounted)",
+    padding: "0",
+    border: "0",
+    background: "transparent",
+    boxShadow: "none",
   },
   ".rf-text-field-input": {
+    "--rf-ink": "var(--rf-paper-ink)",
+    "--rf-muted": "var(--rf-paper-muted)",
+    "--rf-focus": "var(--rf-paper-focus)",
+    "--rf-error": "var(--rf-paper-error)",
     display: "block",
-    boxSizing: "border-box",
     width: "100%",
     minWidth: "0",
     minHeight: "44px",
     padding: "10px 12px",
     border: "1px solid var(--rf-control-edge)",
-    borderBottomColor: "#d4bd91",
-    borderRadius: "1px",
+    borderRadius: "2px",
     color: "var(--rf-paper-ink)",
-    caretColor: "var(--rf-ink)",
-    background: "var(--rf-paper-texture)",
-    boxShadow: "var(--rf-depth-inset)",
-    "--rf-ink": "var(--rf-paper-ink)",
-    "--rf-muted": "var(--rf-paper-muted)",
-    "--rf-focus": "var(--rf-paper-focus)",
-    "--rf-error": "var(--rf-paper-error)",
+    caretColor: "var(--rf-paper-ink)",
+    background: "var(--rf-paper)",
+    transition: "border-color 140ms",
+    boxShadow: "none",
   },
   ".rf-theme .rf-text-field-input": {
     fontSize: "max(16px, 1em)",
@@ -40,115 +38,72 @@ export const textFieldStyles = defineGlobalStyles({
     color: "var(--rf-paper-muted)",
     opacity: "1",
   },
-  '.rf-text-field-input:hover:not(:disabled):not([readonly]):not([aria-invalid="true"])':
+  '.rf-text-field-input:hover:not(:disabled, [readonly], [aria-invalid="true"])':
     {
-      borderColor: "#6f5636",
+      borderColor: "var(--rf-paper-ink)",
     },
-  '.rf-text-field-input[aria-invalid="true"]': {
-    borderColor: "var(--rf-ruby)",
-    boxShadow: "inset 3px 0 0 var(--rf-ruby), inset 0 2px 0 #5a41232b",
-  },
-  ".rf-text-field-input:disabled": {
-    background: "var(--rf-paper-grain), #e0d7c4",
-    cursor: "not-allowed",
-    color: "#655743",
-    WebkitTextFillColor: "#655743",
-    opacity: "1",
-    borderStyle: "dashed",
-    boxShadow: "none",
-  },
-  ".rf-text-field-input[readonly]": {
-    background: "var(--rf-paper-grain), #ece0c7",
-  },
   ".rf-theme .rf-text-field-input:focus-visible": {
     outline: "3px solid var(--rf-focus)",
-    outlineOffset: "6px",
+    outlineOffset: "3px",
+  },
+  ".rf-text-field-input:disabled": {
+    background: "var(--rf-paper-light)",
+    color: "var(--rf-paper-muted)",
+    WebkitTextFillColor: "var(--rf-paper-muted)",
+    cursor: "not-allowed",
+    borderStyle: "dashed",
+    opacity: "1",
+  },
+  ".rf-text-field-input[readonly]": {
+    background: "var(--rf-paper-light)",
+    borderStyle: "dashed",
   },
   ".rf-text-field > :is(.rf-label, .rf-hint, .rf-error)": {
     overflowWrap: "anywhere",
   },
   ".rf-text-field > .rf-error": {
-    color: "var(--rf-error)",
-    borderLeft: "3px solid currentColor",
+    borderLeft: "2px solid currentColor",
     paddingLeft: "8px",
   },
-  "@media (prefers-reduced-motion: reduce)": {
-    ".rf-text-field-input": {
-      transition: "none",
-    },
-  },
-  "@media (forced-colors: active)": {
-    ".rf-text-field-frame": {
-      background: "Canvas",
-      borderColor: "CanvasText",
+  '.rf-text-field[data-surface="integrated"] .rf-text-field-input, :where(.rf-paper-surface) .rf-text-field[data-surface="auto"] .rf-text-field-input':
+    {
+      background: "transparent",
+      border: "0",
+      borderBottom: "1px solid var(--rf-control-edge)",
+      borderRadius: "0",
       boxShadow: "none",
     },
-    '.rf-text-field-input, .rf-text-field-input:is(:disabled, [readonly], [aria-invalid="true"])':
-      {
-        background: "Canvas",
-        color: "CanvasText",
-        caretColor: "CanvasText",
-        borderColor: "CanvasText",
-        boxShadow: "none",
-      },
-    ".rf-text-field-input::placeholder": {
-      color: "GrayText",
+  '.rf-text-field[data-surface] .rf-text-field-input[aria-invalid="true"]': {
+    borderColor: "var(--rf-paper-error)",
+    borderBottom: "2px solid var(--rf-paper-error)",
+    boxShadow: "inset 2px 0 0 var(--rf-paper-error)",
+  },
+  ".rf-text-field[data-surface] .rf-text-field-input:is(:disabled, [readonly])":
+    {
+      borderBottomStyle: "dashed",
+    },
+  "@media (forced-colors: active)": {
+    ".rf-text-field-input, .rf-text-field-input:is(:disabled, [readonly])": {
+      background: "Canvas",
+      color: "CanvasText",
+      borderColor: "CanvasText",
+      boxShadow: "none",
     },
     ".rf-text-field-input:disabled": {
       color: "GrayText",
       WebkitTextFillColor: "GrayText",
       borderColor: "GrayText",
     },
+    ".rf-text-field-input::placeholder": {
+      color: "GrayText",
+    },
     ".rf-theme .rf-text-field-input:focus-visible": {
       outlineColor: "Highlight",
-    },
-    '.rf-text-field-input[aria-invalid="true"], .rf-text-field > .rf-error': {
-      borderColor: "CanvasText",
-      color: "CanvasText",
     },
     '.rf-text-field[data-surface] .rf-text-field-input[aria-invalid="true"]': {
       borderColor: "CanvasText",
       borderStyle: "dashed",
       boxShadow: "none",
     },
-  },
-  '.rf-text-field[data-surface="integrated"] .rf-text-field-frame': {
-    background: "transparent",
-    padding: "0",
-    border: "0",
-    boxShadow: "none",
-  },
-  ':where(.rf-paper-surface) .rf-text-field[data-surface="auto"] .rf-text-field-frame':
-    {
-      background: "transparent",
-      padding: "0",
-      border: "0",
-      boxShadow: "none",
-    },
-  '.rf-text-field[data-surface="integrated"] .rf-text-field-input': {
-    background: "transparent",
-    border: "0",
-    borderBottom: "1px solid var(--rf-control-edge)",
-    borderRadius: "0",
-    boxShadow: "inset 0 -1px 0 #fff2",
-  },
-  ':where(.rf-paper-surface) .rf-text-field[data-surface="auto"] .rf-text-field-input':
-    {
-      background: "transparent",
-      border: "0",
-      borderBottom: "1px solid var(--rf-control-edge)",
-      borderRadius: "0",
-      boxShadow: "inset 0 -1px 0 #fff2",
-    },
-  '.rf-text-field[data-surface] .rf-text-field-input[aria-invalid="true"]': {
-    borderBottom: "2px solid var(--rf-paper-error)",
-    boxShadow: "inset 2px 0 0 var(--rf-paper-error)",
-  },
-  ".rf-text-field[data-surface] .rf-text-field-input:disabled": {
-    color: "var(--rf-paper-muted)",
-    borderBottomStyle: "dashed",
-  },
-  ".rf-text-field[data-surface] .rf-text-field-input[readonly]": {
-    borderBottomStyle: "dashed",
   },
 });

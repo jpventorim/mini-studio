@@ -18,7 +18,7 @@ export function Tabs({
     <BaseTabs.Root
       defaultValue={items[0]?.value}
       {...props}
-      className="rf-tabs"
+      className="rf-tabs rf-paper-surface"
     >
       <BaseTabs.List
         className="rf-tabs-list"
@@ -35,10 +35,11 @@ export function Tabs({
             {item.label}
           </BaseTabs.Tab>
         ))}
+        <BaseTabs.Indicator className="rf-tab-indicator" aria-hidden="true" />
       </BaseTabs.List>
       {items.map((item) => (
         <BaseTabs.Panel
-          className="rf-tab-panel"
+          className="rf-tab-panel rf-paper-surface"
           key={item.value}
           value={item.value}
         >

@@ -46,23 +46,12 @@ export const OnPaper: StoryObj = {
     </section>
   ),
 };
-export const OnTimber: StoryObj = {
-  render: () => (
-    <section className="rf-context-scene">
-      <h1 className="rf-title">Controls on timber</h1>
-      <p className="rf-muted">Mounted controls keep their own paper inserts.</p>
-      <Panel material="wood">
-        <ReferenceForm surface="mounted" />
-      </Panel>
-    </section>
-  ),
-};
 export const NestedPanel: StoryObj = {
   render: () => (
     <section className="rf-context-scene">
       <h1 className="rf-title">Form inside a panel</h1>
       <p className="rf-muted">
-        The panel owns the frame. Its fields integrate with the paper.
+        One sheet supplies the surface. Its fields integrate with the paper.
       </p>
       <Panel>
         <ReferenceForm />
@@ -81,15 +70,15 @@ export const CompactForm: StoryObj = {
     </section>
   ),
 };
-export const OnLeather: StoryObj = {
+export const MountedFields: StoryObj = {
   render: () => (
     <section className="rf-context-scene">
-      <h1 className="rf-title">Controls on leather</h1>
+      <h1 className="rf-title">Independent writing boxes</h1>
       <p className="rf-muted">
-        Light paper inserts remain readable on the dark backing.
+        Fields keep their own boundary when they need it.
       </p>
-      <Panel material="leather">
-        <ReferenceForm />
+      <Panel>
+        <ReferenceForm surface="mounted" />
       </Panel>
     </section>
   ),

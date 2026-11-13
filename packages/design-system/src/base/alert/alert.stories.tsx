@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A semantic notification. Ruby errors are alerts; informational messages use status.",
+          "A clear status icon and message on paper, without accent rails or a raised frame.",
       },
     },
   },

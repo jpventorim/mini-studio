@@ -10,7 +10,7 @@ componentTests("base-switch", {
     await page.keyboard.press("Space");
     expect(await control.isChecked()).toBe(false);
   },
-  "label activates the full-size latch": async (page) => {
+  "label activates the full-size switch": async (page) => {
     const control = page.getByRole("switch", { name: "Enable ambient sound" });
     const bounds = await control.boundingBox();
     expect(bounds?.height).toBeGreaterThanOrEqual(44);

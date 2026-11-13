@@ -36,7 +36,7 @@ componentTests("base-dialog", {
       await page.getByRole("dialog").getAttribute("aria-describedby"),
     ).toBeTruthy();
   },
-  "close clasp restores focus to the trigger": async (page) => {
+  "close button restores focus to the trigger": async (page) => {
     const trigger = page.getByRole("button", {
       name: "Open dialog",
       exact: true,

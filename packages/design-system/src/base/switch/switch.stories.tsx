@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A sliding iron bolt on a wood mounting block for an immediately applied on/off setting. The bolt position and underlined engraving show its state.",
+          "A compact switch with clear position and contrast. The accessible state is announced without printed ON/OFF labels.",
       },
     },
   },

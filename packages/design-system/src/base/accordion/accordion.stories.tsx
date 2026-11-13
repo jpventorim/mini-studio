@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Hinged timber rails with forged iron straps open onto bound paper. Includes keyboard navigation, configurable heading levels, and reduced-motion states.",
+          "Printed section headings and rules reveal content on the same sheet. Keyboard operation, configurable headings, and reduced motion remain supported.",
       },
     },
   },
@@ -54,22 +54,21 @@ export const Expanded: StoryObj = {
   ),
 };
 
-export const BoundFolio: StoryObj = {
+export const LongSections: StoryObj = {
   render: () => (
     <div style={{ maxWidth: 360 }}>
-      <h2 className="rf-title">A bound folio</h2>
+      <h2 className="rf-title">Reference sections</h2>
       <Accordion
         headingLevel={3}
         multiple
-        defaultValue={["binding", "paper"]}
+        defaultValue={["details", "paper"]}
         items={[
           {
-            value: "binding",
-            title:
-              "A long section heading follows the width of its timber rail",
+            value: "details",
+            title: "A long section heading follows the width of the sheet",
             content: (
               <p>
-                The paper sits beneath its wooden cover, with room for readable
+                The section opens on the same sheet, with room for readable
                 notes and a <a href="#paper">linked reference</a>.
               </p>
             ),
@@ -80,8 +79,8 @@ export const BoundFolio: StoryObj = {
             content: "Several sections can remain open for comparison.",
           },
           {
-            value: "sealed",
-            title: "Sealed section — unavailable",
+            value: "unavailable",
+            title: "Unavailable section",
             content: "This section is currently unavailable.",
             disabled: true,
           },

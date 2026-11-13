@@ -40,7 +40,6 @@ const preview: Preview = {
         <main className="rf-story">
           {!context.title.startsWith("Design system/") && (
             <header className="rf-story-header">
-              <p className="rf-eyebrow">Base component / {context.name}</p>
               <h1 className="rf-title">{context.title.replace("Base/", "")}</h1>
             </header>
           )}

@@ -1,27 +1,17 @@
 import type { ComponentProps } from "react";
 
-const joinery = (
-  <span className="rf-panel-joinery" aria-hidden="true">
-    <span />
-    <span />
-    <span />
-    <span />
-  </span>
-);
-
 export function Panel({
   className = "",
-  material = "parchment",
   children,
+  clipped = false,
   ...props
-}: ComponentProps<"div"> & { material?: "parchment" | "leather" | "wood" }) {
+}: ComponentProps<"div"> & { clipped?: boolean }) {
   return (
     <div
       {...props}
-      className={`rf-panel ${material === "parchment" ? "rf-paper-surface" : ""} ${className}`}
-      data-material={material}
+      className={`rf-panel rf-paper-surface ${className}`}
+      data-clipped={clipped ? "true" : undefined}
     >
-      {joinery}
       {children}
     </div>
   );

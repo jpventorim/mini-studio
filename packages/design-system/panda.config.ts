@@ -11,16 +11,16 @@ export default defineConfig({
     extend: {
       tokens: {
         colors: {
-          ink: { value: "#30291f" },
-          muted: { value: "#655640" },
-          paper: { value: "#f4ecd9" },
-          paperLight: { value: "#fbf5e8" },
-          border: { value: "#b5a080" },
-          gold: { value: "#e3b958" },
-          ruby: { value: "#912e38" },
-          emerald: { value: "#236044" },
-          sapphire: { value: "#2a537e" },
-          focus: { value: "#204f91" },
+          ink: { value: "#282d32" },
+          muted: { value: "#58616b" },
+          paper: { value: "#fffef8" },
+          paperLight: { value: "#f6f4ec" },
+          border: { value: "#c6c9c7" },
+          gold: { value: "#e7c66b" },
+          ruby: { value: "#a13742" },
+          emerald: { value: "#2f684f" },
+          sapphire: { value: "#285a88" },
+          focus: { value: "#285a88" },
         },
         fonts: {
           body: { value: '"Segoe UI", ui-sans-serif, system-ui, sans-serif' },

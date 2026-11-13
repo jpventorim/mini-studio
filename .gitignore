@@ -17,6 +17,9 @@ test-results
 styled-system
 *.local
 
+# Local design-review skill
+/.agents/skills/impeccable/
+
 # Editor directories and files
 .vscode
 .vscode/*

@@ -13,9 +13,7 @@ componentTests(
       const before = await notes.boundingBox();
       const paperBefore = await page
         .locator(".rf-panel")
-        .evaluate(
-          (element) => getComputedStyle(element, "::before").backgroundColor,
-        );
+        .evaluate((element) => getComputedStyle(element).backgroundColor);
       await page
         .getByRole("button", { name: "Use dark theme", exact: true })
         .click();
@@ -31,9 +29,7 @@ componentTests(
       expect(
         await page
           .locator(".rf-panel")
-          .evaluate(
-            (element) => getComputedStyle(element, "::before").backgroundColor,
-          ),
+          .evaluate((element) => getComputedStyle(element).backgroundColor),
       ).not.toBe(paperBefore);
     },
     "keeps mixed theme scopes independent and sends the theme through portals":
@@ -51,14 +47,10 @@ componentTests(
         expect(await samples.nth(1).getAttribute("data-theme")).toBe("dark");
         const lightPaper = await light
           .locator(".rf-panel")
-          .evaluate(
-            (element) => getComputedStyle(element, "::before").backgroundColor,
-          );
+          .evaluate((element) => getComputedStyle(element).backgroundColor);
         const darkPaper = await dark
           .locator(".rf-panel")
-          .evaluate(
-            (element) => getComputedStyle(element, "::before").backgroundColor,
-          );
+          .evaluate((element) => getComputedStyle(element).backgroundColor);
         expect(lightPaper).not.toBe(darkPaper);
         for (const [scope, theme] of [
           [light, "light"],

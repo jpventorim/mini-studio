@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A vertically resizable writing sheet set into a timber tablet. Persistent labels and linked help or errors accompany the native textarea.",
+          "A vertically resizable writing area with quiet ruling aligned to its line height. Labels and linked help or errors remain persistent.",
       },
     },
   },
@@ -21,7 +21,7 @@ export const Default: StoryObj = {
   render: () => (
     <Textarea
       label="Notes"
-      placeholder="Put quill to parchment…"
+      placeholder="Write your notes…"
       description="Write across several lines. Drag the lower corner to make more room."
     />
   ),
@@ -74,7 +74,7 @@ export const InPanel: StoryObj = {
       <Textarea
         label="Notes"
         placeholder="Enter notes"
-        description="One paper surface, without a nested wooden frame."
+        description="One paper surface, without a nested frame."
       />
     </Panel>
   ),

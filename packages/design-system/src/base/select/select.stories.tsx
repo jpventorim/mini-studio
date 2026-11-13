@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A keyboard-operable listbox with selected, highlighted, and disabled options.",
+          "A clear writing box and chevron open a plain paper list. Labels, help, invalid state, and keyboard selection remain available.",
       },
     },
   },

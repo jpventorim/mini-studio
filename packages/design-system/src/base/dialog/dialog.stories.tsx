@@ -11,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "An opened wood-backed folio with a fibrous sheet, iron binding, focus trap, Escape dismissal, and focus restoration.",
+          "A raised working sheet with a quiet scrim, focus trap, Escape dismissal, and focus restoration.",
       },
     },
   },
@@ -35,7 +35,7 @@ export const LongContent: StoryObj = {
   render: () => (
     <Dialog
       trigger={<Button>Open long dialog</Button>}
-      title="A folio with room for a longer heading"
+      title="A note with room for a longer heading"
       description="The sheet scrolls within its frame so every field remains reachable on a narrow screen."
     >
       {[
@@ -51,7 +51,7 @@ export const LongContent: StoryObj = {
         <p key={page}>
           <strong>{page} page. </strong>
           Each page has a little more to say. Keep reading to reach the writing
-          field, or use the close clasp or Escape to return to the table.
+          field, or use the close button or Escape to return to the table.
         </p>
       ))}
       <TextField

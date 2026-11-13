@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A narrow forged iron rule with squared end keepers between related regions.",
+          "A fine printed rule separates related regions in either orientation.",
       },
     },
   },

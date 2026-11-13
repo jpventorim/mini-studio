@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import type { Tone } from "../types";
 
 export function Button({
-  tone = "ruby",
+  tone = "sapphire",
   variant = "solid",
   size = "md",
   className = "",

@@ -58,26 +58,6 @@ export const globalCss = mergeStyles(
   progressStyles,
 ) as Parameters<typeof defineGlobalStyles>[0];
 export const keyframes = {
-  "rf-stamp": {
-    from: {
-      transform: "scale(0.6)",
-      opacity: "0",
-    },
-    to: {
-      transform: "scale(1)",
-      opacity: "1",
-    },
-  },
-  "rf-reveal": {
-    from: {
-      transform: "translateY(5px)",
-      opacity: "0",
-    },
-    to: {
-      transform: "translateY(0)",
-      opacity: "1",
-    },
-  },
   "rf-loading": {
     from: {
       transform: "translateX(-20%)",

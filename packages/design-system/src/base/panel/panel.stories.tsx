@@ -1,21 +1,17 @@
 import type { Meta, StoryObj } from "storybook-react-rsbuild";
 import { Panel } from "./index";
-
-const meta = {
+export default {
   title: "Base/Panel",
   component: Panel,
   tags: ["autodocs"],
   parameters: {
     docs: {
       description: {
-        component:
-          "A fibrous writing sheet fitted into a timber frame with forged corner brackets, or a stitched hide cover with a bound spine.",
+        component: "A plain working sheet with an optional stationery clip.",
       },
     },
   },
 } satisfies Meta;
-export default meta;
-
 export const Default: StoryObj = {
   render: () => (
     <Panel>
@@ -24,56 +20,23 @@ export const Default: StoryObj = {
     </Panel>
   ),
 };
-export const Leather: StoryObj = {
+export const Clipped: StoryObj = {
   render: () => (
-    <Panel material="leather">
-      <h2 className="rf-title">Leather-bound</h2>
-      <p className="rf-muted">
-        A cut hide cover, saddle stitching, and readable ivory ink.
-      </p>
+    <Panel clipped>
+      <h2 className="rf-title">Session notes</h2>
+      <p className="rf-muted">One small clip keeps related notes together.</p>
     </Panel>
   ),
 };
-
 export const Narrow: StoryObj = {
   render: () => (
-    <div
-      style={{ width: "280px", maxWidth: "100%", display: "grid", gap: "24px" }}
-    >
+    <div style={{ width: 280, maxWidth: "100%" }}>
       <Panel>
-        <h2 className="rf-title">Writing tablet</h2>
+        <h2 className="rf-title">Writing sheet</h2>
         <p className="rf-muted">
-          Timber, iron, and paper retain their edges on a narrow table.
-        </p>
-      </Panel>
-      <Panel material="leather">
-        <h2 className="rf-title">Bound cover</h2>
-        <p className="rf-muted">
-          Small lettering remains clear against the hide.
+          A clear edge and readable copy at a narrow width.
         </p>
       </Panel>
     </div>
-  ),
-};
-
-export const LayeredMaterials: StoryObj = {
-  render: () => (
-    <Panel material="leather">
-      <h2 className="rf-title">A bound writing surface</h2>
-      <p className="rf-muted">Ivory lettering on the outer hide.</p>
-      <Panel>
-        <h3 className="rf-title">An inset sheet</h3>
-        <p className="rf-muted">Dark ink returns on the inner paper.</p>
-      </Panel>
-    </Panel>
-  ),
-};
-
-export const Wood: StoryObj = {
-  render: () => (
-    <Panel material="wood">
-      <h2 className="rf-title">Timber backing</h2>
-      <p className="rf-muted">A supporting surface for mounted controls.</p>
-    </Panel>
   ),
 };

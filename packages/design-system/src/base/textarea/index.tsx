@@ -26,7 +26,7 @@ export function Textarea({
       <label className="rf-label" htmlFor={id}>
         {label}
       </label>
-      <div className="rf-textarea-tablet">
+      <div className="rf-textarea-frame">
         <textarea
           rows={4}
           {...props}

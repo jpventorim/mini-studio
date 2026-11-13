@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Supplementary help on hover or focus. Essential information must also exist outside a tooltip.",
+          "A compact high-contrast ink label, available on keyboard focus as well as pointer hover.",
       },
     },
   },
