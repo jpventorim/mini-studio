@@ -10,7 +10,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A clear writing box and chevron open a plain paper list. Labels, help, invalid state, and keyboard selection remain available.",
+          "A writing box on canvas and an underlined field on paper. In the dropdown, a check marks the current value and an outline shows where keyboard selection will land.",
       },
     },
   },

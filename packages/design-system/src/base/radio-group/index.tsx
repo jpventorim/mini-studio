@@ -39,7 +39,7 @@ export function RadioGroup({
                 aria-hidden="true"
               />
             </Radio.Root>
-            <span>{item.label}</span>
+            <span className="rf-radio-choice-label">{item.label}</span>
           </label>
         ))}
       </BaseRadioGroup>

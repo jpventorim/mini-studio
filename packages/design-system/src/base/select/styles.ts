@@ -40,17 +40,29 @@ export const selectStyles = defineGlobalStyles({
   },
   ".rf-select-opener": {
     display: "flex",
+    position: "relative",
     flex: "0 0 44px",
     minHeight: "44px",
+    alignSelf: "stretch",
     alignItems: "center",
     justifyContent: "center",
     color: "var(--rf-paper-muted)",
+  },
+  ".rf-select-opener::before": {
+    content: '""',
+    position: "absolute",
+    insetInlineStart: "0",
+    height: "20px",
+    borderInlineStart: "1px solid var(--rf-paper-edge)",
   },
   ".rf-select-trigger:hover:not([data-disabled], [data-readonly])": {
     borderColor: "var(--rf-paper-ink)",
   },
   ".rf-select-trigger[data-popup-open] .rf-select-opener svg": {
     transform: "rotate(180deg)",
+  },
+  ".rf-select-trigger[data-popup-open] .rf-select-opener": {
+    color: "var(--rf-paper-focus)",
   },
   ".rf-theme .rf-select-trigger:focus-visible": {
     outline: "3px solid var(--rf-focus)",
@@ -78,8 +90,8 @@ export const selectStyles = defineGlobalStyles({
     "--rf-focus": "var(--rf-paper-focus)",
     "--rf-error": "var(--rf-paper-error)",
     position: "relative",
-    minWidth: "min(var(--anchor-width), calc(100vw - 24px))",
-    maxWidth: "calc(100vw - 24px)",
+    width:
+      "min(max(12rem, var(--anchor-width)), var(--available-width), calc(100vw - 24px))",
     maxHeight: "var(--available-height)",
     overflow: "auto",
     overscrollBehavior: "contain",
@@ -95,11 +107,13 @@ export const selectStyles = defineGlobalStyles({
     opacity: "0",
   },
   ".rf-select-list": {
+    display: "grid",
+    gap: "2px",
     padding: "4px",
   },
   ".rf-select-item": {
-    display: "flex",
-    justifyContent: "space-between",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 16px",
     alignItems: "center",
     gap: "12px",
     padding: "10px 12px",
@@ -113,17 +127,20 @@ export const selectStyles = defineGlobalStyles({
   },
   ".rf-select-check": {
     display: "flex",
-    flexShrink: "0",
-    color: "var(--rf-sapphire)",
+    color: "var(--rf-paper-focus)",
   },
   ".rf-select-item[data-selected]": {
-    fontWeight: "700",
+    fontWeight: "600",
+    background: "color-mix(in srgb, var(--rf-paper-focus) 9%, transparent)",
   },
-  ".rf-select-item[data-highlighted]": {
+  ".rf-select-item[data-highlighted]:not([data-selected])": {
     background: "var(--rf-paper-light)",
-    outline: "2px solid var(--rf-paper-focus)",
-    outlineOffset: "-2px",
   },
+  ".rf-theme .rf-select-item[data-highlighted], .rf-theme .rf-select-item:focus-visible":
+    {
+      outline: "2px solid var(--rf-paper-focus)",
+      outlineOffset: "-2px",
+    },
   ".rf-select-item[data-disabled]": {
     color: "var(--rf-paper-muted)",
     textDecoration: "line-through",
@@ -135,6 +152,11 @@ export const selectStyles = defineGlobalStyles({
       borderBottom: "1px solid var(--rf-control-edge)",
       borderRadius: "0",
       boxShadow: "none",
+    },
+  '.rf-select-field[data-surface] .rf-select-trigger[data-popup-open]:not([aria-invalid="true"])':
+    {
+      borderColor: "var(--rf-paper-focus)",
+      boxShadow: "inset 0 -1px 0 var(--rf-paper-focus)",
     },
   '.rf-select-field[data-surface] .rf-select-trigger[aria-invalid="true"]': {
     borderColor: "var(--rf-paper-error)",
@@ -158,15 +180,21 @@ export const selectStyles = defineGlobalStyles({
     ".rf-theme .rf-select-trigger:focus-visible": {
       outlineColor: "Highlight",
     },
-    ".rf-select-item[data-highlighted]": {
-      background: "Highlight",
+    ".rf-theme .rf-select-item[data-highlighted], .rf-theme .rf-select-item:focus-visible":
+      {
+        background: "Highlight",
+        color: "HighlightText",
+        outlineColor: "HighlightText",
+        forcedColorAdjust: "none",
+      },
+    ".rf-select-item:is([data-highlighted], :focus-visible) .rf-select-check": {
       color: "HighlightText",
-      outlineColor: "HighlightText",
-      forcedColorAdjust: "none",
     },
-    ".rf-select-item[data-highlighted] .rf-select-check": {
-      color: "HighlightText",
-    },
+    '.rf-select-field[data-surface] .rf-select-trigger[data-popup-open]:not([aria-invalid="true"])':
+      {
+        borderColor: "Highlight",
+        boxShadow: "none",
+      },
     ".rf-select-trigger[data-disabled], .rf-select-item[data-disabled]": {
       color: "GrayText",
       borderColor: "GrayText",

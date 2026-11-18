@@ -7,7 +7,8 @@ export default {
   parameters: {
     docs: {
       description: {
-        component: "A plain working sheet with an optional stationery clip.",
+        component:
+          "A working sheet with a shallow paper edge. Use the clipped variant to give a standalone sheet a stationery clip.",
       },
     },
   },

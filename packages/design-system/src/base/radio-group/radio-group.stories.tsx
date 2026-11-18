@@ -9,7 +9,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Fine selection rings with a small ink center and a stronger selected label. Full targets and standard keyboard behavior remain.",
+          "A vertical list for picking one option. Click anywhere on an option row or use the arrow keys to move between choices.",
       },
     },
   },

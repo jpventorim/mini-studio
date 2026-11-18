@@ -81,7 +81,7 @@ performance. Reduced motion removes transitions and looping decoration.
 
 | Component  | Current treatment                                                    |
 | ---------- | -------------------------------------------------------------------- |
-| Panel      | Plain sheet; `clipped` opts into one stationery clip                 |
+| Panel      | Shallow paper edge with an optional `clipped` variant                |
 | Separator  | Fine printed rule in either orientation                              |
 | Button     | Ink-filled primary, outlined secondary, quiet text action            |
 | Badge      | Compact typeset label with a pale tone tint; no accent strip         |
@@ -91,8 +91,8 @@ performance. Reduced motion removes transitions and looping decoration.
 | Textarea   | Resizable writing area with text-aligned ruling                      |
 | Checkbox   | Printed square with a crisp ink check or mixed dash                  |
 | Switch     | Small track and thumb; position and contrast show state              |
-| RadioGroup | Fine rings, small ink centers, and stronger selected labels          |
-| Select     | Writing box and chevron; options on a plain sheet                    |
+| RadioGroup | Stacked options with full-row focus and a filled selection mark      |
+| Select     | Writing box or baseline with a check mark and inset menu focus       |
 | Slider     | Continuous line and round thumb; no decorative tick marks            |
 | Tabs       | Unframed text index, selected underline, and open content            |
 | Accordion  | Printed section headings and rules revealing the same sheet          |
