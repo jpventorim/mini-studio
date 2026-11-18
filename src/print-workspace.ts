@@ -10,7 +10,6 @@ export type SheetSettings = {
   dpi: number;
   marginMm: number;
   spacingMm: number;
-  allowRotation: boolean;
 };
 
 export const defaultSettings: SheetSettings = {
@@ -18,7 +17,6 @@ export const defaultSettings: SheetSettings = {
   dpi: 300,
   marginMm: 5,
   spacingMm: 2,
-  allowRotation: true,
 };
 
 export type ImportedImage = {
@@ -36,6 +34,7 @@ export type PrintImage = ImportedImage & {
   scale: number;
   customSize?: ImageSize;
   lockRatio: boolean;
+  allowRotation: boolean;
 };
 
 export type PreviewPage = {
@@ -79,12 +78,12 @@ export function printRequest(images: PrintImage[], settings: SheetSettings) {
     dpi: settings.dpi,
     marginMm: settings.marginMm,
     spacingMm: settings.spacingMm,
-    allowRotation: settings.allowRotation,
     items: images.map((image) => {
       const size = imageDimensions(image, settings.dpi);
       return {
         id: image.id,
         quantity: image.quantity,
+        allowRotation: image.allowRotation,
         widthMm: size.width,
         heightMm: image.customSize && !image.lockRatio ? size.height : null,
       };

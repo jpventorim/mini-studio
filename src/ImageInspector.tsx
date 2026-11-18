@@ -1,6 +1,7 @@
 import {
   Accordion,
   Button,
+  Checkbox,
   DimensionFields,
   Notice,
   NumberField,
@@ -128,25 +129,33 @@ export function ImageInspector({
             value: "advanced",
             title: "Advanced",
             content: (
-              <DimensionFields
-                unit="mm"
-                width={size.width}
-                height={size.height}
-                min={0.01}
-                max={1000}
-                locked={image.lockRatio}
-                onWidthChange={(value) => setDimension("width", value)}
-                onHeightChange={(value) => setDimension("height", value)}
-                onLockedChange={(lockRatio) =>
-                  update({
-                    lockRatio,
-                    customSize:
-                      lockRatio && image.customSize
-                        ? { width: size.width, height: size.width / ratio }
-                        : image.customSize,
-                  })
-                }
-              />
+              <div className="rf-stack">
+                <DimensionFields
+                  unit="mm"
+                  width={size.width}
+                  height={size.height}
+                  min={0.01}
+                  max={1000}
+                  locked={image.lockRatio}
+                  onWidthChange={(value) => setDimension("width", value)}
+                  onHeightChange={(value) => setDimension("height", value)}
+                  onLockedChange={(lockRatio) =>
+                    update({
+                      lockRatio,
+                      customSize:
+                        lockRatio && image.customSize
+                          ? { width: size.width, height: size.width / ratio }
+                          : image.customSize,
+                    })
+                  }
+                />
+                <Checkbox
+                  label="Allow 90° rotation"
+                  markAlignment="start"
+                  checked={image.allowRotation}
+                  onCheckedChange={(allowRotation) => update({ allowRotation })}
+                />
+              </div>
             ),
           },
         ]}

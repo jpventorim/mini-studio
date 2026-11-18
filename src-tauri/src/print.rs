@@ -182,7 +182,6 @@ pub(crate) struct PrintRequest {
     dpi: f64,
     margin_mm: f64,
     spacing_mm: f64,
-    allow_rotation: bool,
 }
 
 impl PrintRequest {
@@ -195,7 +194,7 @@ impl PrintRequest {
             dpi: self.dpi,
             margin_mm: self.margin_mm,
             spacing_mm: self.spacing_mm,
-            allow_rotation: self.allow_rotation,
+            ..LayoutOptions::default()
         }
     }
 }
@@ -205,6 +204,7 @@ impl PrintRequest {
 struct PrintItem {
     id: u32,
     quantity: usize,
+    allow_rotation: bool,
     width_mm: f64,
     height_mm: Option<f64>,
 }
@@ -246,7 +246,8 @@ fn items<'a>(
         .iter()
         .zip(sources)
         .map(|(item, image)| {
-            let source = ImageItem::new(item.id.to_string(), image.as_ref(), item.quantity);
+            let source = ImageItem::new(item.id.to_string(), image.as_ref(), item.quantity)
+                .with_rotation(item.allow_rotation);
             match item.height_mm {
                 Some(height) => source.with_size_mm(item.width_mm, height),
                 None => source.with_width_mm(item.width_mm),
@@ -397,6 +398,7 @@ mod tests {
             items: vec![PrintItem {
                 id: image.id,
                 quantity: 2,
+                allow_rotation: false,
                 width_mm: 50.8,
                 height_mm: Some(30.0),
             }],
@@ -405,10 +407,10 @@ mod tests {
             dpi: 300.0,
             margin_mm: 5.0,
             spacing_mm: 2.0,
-            allow_rotation: false,
         };
         let sources = sources(&state, &request).unwrap();
         let items = items(&request, &sources);
+        assert!(!items[0].allow_rotation);
         let layout = image_packing::layout(&items, &request.options()).unwrap();
         assert_eq!(layout.pages()[0].placements.len(), 2);
         assert_eq!(layout.pages()[0].placements[0].height_mm, 30.0);

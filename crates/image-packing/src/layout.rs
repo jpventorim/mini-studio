@@ -263,7 +263,8 @@ pub fn layout<I: GenericImageView + ?Sized>(
         let w = units(width, true)?;
         let h = units(height, true)?;
         let fits = w <= available_w && h <= available_h;
-        let rotated_fits = options.allow_rotation && h <= available_w && w <= available_h;
+        let can_rotate = options.allow_rotation && item.allow_rotation;
+        let rotated_fits = can_rotate && h <= available_w && w <= available_h;
         if !fits && !rotated_fits {
             return Err(Error::ImageTooLarge {
                 id: item.id.clone(),
@@ -279,7 +280,7 @@ pub fn layout<I: GenericImageView + ?Sized>(
             width: w + gap,
             height: h + gap,
             quantity: item.quantity,
-            can_rotate: options.allow_rotation,
+            can_rotate,
         });
     }
     let sheets = pack(TwoDProblem {

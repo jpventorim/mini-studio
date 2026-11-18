@@ -66,6 +66,9 @@ function AllComponents() {
   const [quantity, setQuantity] = useState(2);
   const [scale, setScale] = useState(100);
   const [selectedImage, selectImage] = useState("Scout.png");
+  const [rotationByImage, setRotationByImage] = useState<
+    Record<string, boolean>
+  >({});
   const [notice, setNotice] = useState<string | null>("Saved print-sheet.pdf");
   const [zoom, setZoom] = useState(1);
   const materialSwatches = [
@@ -393,7 +396,22 @@ function AllComponents() {
                   {
                     value: "advanced",
                     title: "Advanced",
-                    content: <DimensionFieldsExample />,
+                    content: (
+                      <div className="rf-stack">
+                        <DimensionFieldsExample />
+                        <Checkbox
+                          label="Allow 90° rotation"
+                          markAlignment="start"
+                          checked={rotationByImage[selectedImage] ?? true}
+                          onCheckedChange={(allowed) =>
+                            setRotationByImage((current) => ({
+                              ...current,
+                              [selectedImage]: allowed,
+                            }))
+                          }
+                        />
+                      </div>
+                    ),
                   },
                 ]}
               />

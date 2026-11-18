@@ -12,10 +12,11 @@ the clickable drop area or drag them into the window. Set the paper size and
 each image's quantity and scale. The live preview repacks the sheets as you
 edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
 bottom-right adjust zoom and fit the sheets. **Advanced** expands to show
-exact width and height controls and a link to lock their aspect ratio.
+exact width and height controls, an aspect-ratio lock, and a 90° rotation
+toggle for the selected image. Rotation is enabled when an image is added.
 
 The workspace starts with A4 portrait, 300 DPI, 5 mm margins, and 2 mm spacing.
-**Print settings** adjusts DPI, margins, spacing, and automatic 90° rotation.
+**Print settings** adjusts DPI, margins, and spacing.
 **Export PDF…** opens the system save dialog. Print the resulting PDF at actual
 size to preserve the dimensions shown in the editor.
 

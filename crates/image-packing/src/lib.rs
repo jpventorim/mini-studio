@@ -37,6 +37,8 @@ pub struct ImageItem<'a, I: ?Sized> {
     pub width_mm: Option<f64>,
     /// Optional height in millimetres. Omit to preserve the source aspect ratio.
     pub height_mm: Option<f64>,
+    /// Whether this image can rotate when layout rotation is enabled.
+    pub allow_rotation: bool,
 }
 
 impl<'a, I: ?Sized> ImageItem<'a, I> {
@@ -48,6 +50,7 @@ impl<'a, I: ?Sized> ImageItem<'a, I> {
             quantity,
             width_mm: None,
             height_mm: None,
+            allow_rotation: true,
         }
     }
 
@@ -64,6 +67,13 @@ impl<'a, I: ?Sized> ImageItem<'a, I> {
     pub fn with_size_mm(mut self, width: f64, height: f64) -> Self {
         self.width_mm = Some(width);
         self.height_mm = Some(height);
+        self
+    }
+
+    /// Set whether this image permits a 90-degree turn during packing.
+    #[must_use]
+    pub fn with_rotation(mut self, allow_rotation: bool) -> Self {
+        self.allow_rotation = allow_rotation;
         self
     }
 }

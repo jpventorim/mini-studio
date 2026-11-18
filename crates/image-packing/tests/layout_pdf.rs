@@ -164,6 +164,33 @@ fn independent_print_dimensions_change_placements_and_invalidate_old_layouts() {
 }
 
 #[test]
+fn individual_images_can_stay_upright_while_others_rotate() {
+    let image = RgbImage::new(10, 10);
+    let options = LayoutOptions::default();
+    let wide = ImageItem::new("wide", &image, 1).with_size_mm(250.0, 100.0);
+    let upright = ImageItem::new("upright", &image, 2)
+        .with_size_mm(50.0, 100.0)
+        .with_rotation(false);
+    let packed = layout(&[wide.clone(), upright], &options).unwrap();
+    let placements: Vec<_> = packed
+        .pages()
+        .iter()
+        .flat_map(|page| &page.placements)
+        .collect();
+    assert_eq!(placements.len(), 3);
+    assert!(
+        placements
+            .iter()
+            .all(|placement| placement.rotated == (placement.source_id == "wide"))
+    );
+
+    assert!(matches!(
+        layout(&[wide.with_rotation(false)], &options),
+        Err(Error::ImageTooLarge { id, .. }) if id == "wide"
+    ));
+}
+
+#[test]
 fn rotation_allows_an_otherwise_oversized_image() {
     let image = RgbaImage::from_pixel(250, 100, Rgba([200, 40, 80, 128]));
     let items = [ImageItem::new("wide", &image, 1).with_width_mm(250.0)];

@@ -4,14 +4,20 @@ import { type ComponentProps, type ReactNode, useId } from "react";
 
 export function Checkbox({
   label,
+  markAlignment = "center",
   ...props
 }: Omit<ComponentProps<typeof BaseCheckbox.Root>, "className" | "children"> & {
   label: ReactNode;
+  markAlignment?: "center" | "start";
 }) {
   const generatedId = useId();
   const id = props.id ?? generatedId;
   return (
-    <label className="rf-checkbox-choice" htmlFor={id}>
+    <label
+      className="rf-checkbox-choice"
+      data-mark-alignment={markAlignment}
+      htmlFor={id}
+    >
       <BaseCheckbox.Root {...props} id={id} className="rf-checkbox">
         <BaseCheckbox.Indicator
           className="rf-checkbox-indicator"

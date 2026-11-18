@@ -16,6 +16,9 @@ export const checkboxStyles = defineGlobalStyles({
     minWidth: "0",
     overflowWrap: "anywhere",
   },
+  '.rf-checkbox-choice[data-mark-alignment="start"]': {
+    gap: "0",
+  },
   ".rf-checkbox-choice:has(.rf-checkbox[data-disabled])": {
     cursor: "not-allowed",
     color: "var(--rf-muted)",
@@ -45,6 +48,12 @@ export const checkboxStyles = defineGlobalStyles({
     background: "var(--rf-paper)",
     pointerEvents: "none",
     borderRadius: "2px",
+  },
+  '.rf-checkbox-choice[data-mark-alignment="start"] .rf-checkbox': {
+    justifyContent: "flex-start",
+  },
+  '.rf-checkbox-choice[data-mark-alignment="start"] .rf-checkbox::before': {
+    insetInlineStart: "0",
   },
   ".rf-checkbox:hover:not([data-disabled])::before": {
     borderColor: "var(--rf-ink)",

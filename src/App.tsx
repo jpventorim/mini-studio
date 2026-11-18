@@ -1,6 +1,5 @@
 import {
   Button,
-  Checkbox,
   EmptyState,
   Notice,
   NumberField,
@@ -99,6 +98,7 @@ function App() {
         quantity: 1,
         scale: 100,
         lockRatio: true,
+        allowRotation: true,
       }));
       if (added.length) {
         setImages((previous) => [...previous, ...added]);
@@ -260,13 +260,6 @@ function App() {
                     onChange={(spacingMm) => updateSettings({ spacingMm })}
                   />
                 </div>
-                <Checkbox
-                  label="Allow 90° rotation"
-                  checked={settings.allowRotation}
-                  onCheckedChange={(allowRotation) =>
-                    updateSettings({ allowRotation })
-                  }
-                />
               </div>
             </Popover>
             <Button

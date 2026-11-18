@@ -57,6 +57,16 @@ componentTests("design-system-all-components", {
         (element) => element.getBoundingClientRect().width,
       ),
     ).toBe(width);
+    const rotation = container.getByRole("checkbox", {
+      name: "Allow 90° rotation",
+    });
+    await rotation.scrollIntoViewIfNeeded();
+    const mark = await rotation.locator(".rf-checkbox-indicator").boundingBox();
+    const dimension = await container
+      .locator(".rf-number-box")
+      .first()
+      .boundingBox();
+    expect(mark && dimension && Math.abs(mark.x - dimension.x) < 1).toBe(true);
     expect(
       await container.evaluate((element) => {
         if (CSS.supports("selector(::-webkit-scrollbar)")) {
