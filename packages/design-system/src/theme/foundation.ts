@@ -130,6 +130,15 @@ export const foundationStyles = defineGlobalStyles({
   ".rf-muted": {
     color: "var(--rf-muted)",
   },
+  ".rf-visually-hidden": {
+    position: "absolute",
+    width: "1px",
+    height: "1px",
+    padding: "0",
+    overflow: "hidden",
+    clipPath: "inset(50%)",
+    whiteSpace: "nowrap",
+  },
   ".rf-hint": {
     fontSize: "0.82rem",
     color: "var(--rf-muted)",

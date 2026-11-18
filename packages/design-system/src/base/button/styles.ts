@@ -48,6 +48,10 @@ export const buttonStyles = defineGlobalStyles({
     padding: "6px 12px",
     fontSize: "0.78rem",
   },
+  ".rf-button[data-icon-only]": {
+    width: "44px",
+    padding: "0",
+  },
   ".rf-button:focus-visible": {
     outline: "3px solid var(--rf-focus)",
     outlineOffset: "3px",
@@ -59,6 +63,11 @@ export const buttonStyles = defineGlobalStyles({
     cursor: "not-allowed",
     boxShadow: "none",
   },
+  '.rf-button[data-variant="ghost"][data-icon-only]:is(:disabled, [data-disabled])':
+    {
+      background: "transparent",
+      borderColor: "transparent",
+    },
   "@media (prefers-reduced-motion: reduce)": {
     ".rf-button": {
       transition: "none",

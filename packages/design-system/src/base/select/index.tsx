@@ -6,6 +6,8 @@ import type { Choice } from "../types";
 
 export function Select({
   label,
+  hideLabel = false,
+  compact = false,
   items,
   placeholder = "Choose an option",
   surface = "auto",
@@ -18,6 +20,8 @@ export function Select({
   "items" | "children" | "multiple"
 > & {
   label: string;
+  hideLabel?: boolean;
+  compact?: boolean;
   items: readonly Choice[];
   placeholder?: string;
   surface?: FieldSurface;
@@ -32,9 +36,17 @@ export function Select({
       .filter(Boolean)
       .join(" ") || undefined;
   return (
-    <div className="rf-field rf-select-field" data-surface={surface}>
+    <div
+      className="rf-field rf-select-field"
+      data-surface={surface}
+      data-compact={compact || undefined}
+    >
       <BaseSelect.Root {...props} id={id} items={items}>
-        <BaseSelect.Label className="rf-label">{label}</BaseSelect.Label>
+        <BaseSelect.Label
+          className={hideLabel ? "rf-visually-hidden" : "rf-label"}
+        >
+          {label}
+        </BaseSelect.Label>
         <BaseSelect.Trigger
           className="rf-select-trigger"
           aria-invalid={error ? true : undefined}

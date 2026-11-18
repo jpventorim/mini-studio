@@ -21,10 +21,10 @@ pub use pdf::render_pdf;
 
 use image::{GenericImageView, Pixel};
 
-/// A borrowed image with an independent quantity and optional print width.
+/// A borrowed image with an independent quantity and optional print dimensions.
 ///
 /// A batch uses one view type. For mixed RGB/RGBA images, use `DynamicImage`.
-/// Export converts pixels to RGBA8; no image is resized or cropped.
+/// Export converts pixels to RGBA8 and embeds them at the requested physical size.
 #[derive(Debug, Clone)]
 pub struct ImageItem<'a, I: ?Sized> {
     /// Identifier recorded in placement metadata; need not be unique.
@@ -33,8 +33,10 @@ pub struct ImageItem<'a, I: ?Sized> {
     pub image: &'a I,
     /// Positive number of copies to place.
     pub quantity: usize,
-    /// Optional width in millimetres, preserving the source aspect ratio.
+    /// Optional width in millimetres.
     pub width_mm: Option<f64>,
+    /// Optional height in millimetres. Omit to preserve the source aspect ratio.
+    pub height_mm: Option<f64>,
 }
 
 impl<'a, I: ?Sized> ImageItem<'a, I> {
@@ -45,6 +47,7 @@ impl<'a, I: ?Sized> ImageItem<'a, I> {
             image,
             quantity,
             width_mm: None,
+            height_mm: None,
         }
     }
 
@@ -52,6 +55,15 @@ impl<'a, I: ?Sized> ImageItem<'a, I> {
     #[must_use]
     pub fn with_width_mm(mut self, width: f64) -> Self {
         self.width_mm = Some(width);
+        self.height_mm = None;
+        self
+    }
+
+    /// Set both physical dimensions, allowing the aspect ratio to change.
+    #[must_use]
+    pub fn with_size_mm(mut self, width: f64, height: f64) -> Self {
+        self.width_mm = Some(width);
+        self.height_mm = Some(height);
         self
     }
 }

@@ -17,6 +17,23 @@ const meta = {
 } satisfies Meta;
 export default meta;
 
+export const Compact: StoryObj = {
+  render: () => (
+    <div style={{ width: 102 }}>
+      <Select
+        label="Paper"
+        compact
+        hideLabel
+        defaultValue="a4"
+        items={[
+          { value: "a4", label: "A4" },
+          { value: "letter", label: "Letter" },
+        ]}
+      />
+    </div>
+  ),
+};
+
 export const Default: StoryObj = {
   render: () => (
     <Select

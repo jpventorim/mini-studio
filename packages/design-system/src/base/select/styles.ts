@@ -8,6 +8,13 @@ export const selectStyles = defineGlobalStyles({
   ".rf-select-field > .rf-label": {
     overflowWrap: "anywhere",
   },
+  ".rf-select-field[data-compact]": { gap: "0" },
+  ".rf-select-field[data-compact] .rf-select-trigger": { minHeight: "44px" },
+  ".rf-select-field[data-compact] .rf-select-value": { paddingInline: "8px" },
+  ".rf-select-field[data-compact] .rf-select-opener": {
+    flexBasis: "32px",
+    minHeight: "42px",
+  },
   ".rf-select-trigger": {
     "--rf-ink": "var(--rf-paper-ink)",
     "--rf-muted": "var(--rf-paper-muted)",

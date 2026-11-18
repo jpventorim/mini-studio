@@ -4,7 +4,20 @@ Pack one or more images, each with an independent quantity, into a multi-page
 PDF using `image`, `bin-packing`, and `krilla`. The `image-packing` package contains
 the library and an optional `clap` CLI for development and validation. Library
 users do not compile CLI dependencies unless they enable the `cli` feature.
-The package is independent of the existing Tauri + React application.
+
+## Desktop app
+
+Run `bun run tauri dev` to open the print workspace. Add PNG or JPEG files with
+the clickable drop area or drag them into the window. Set the paper size and
+each image's quantity and scale. The live preview repacks the sheets as you
+edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
+bottom-right also adjust zoom and change pages. **Advanced sizing** expands to
+show exact width and height controls.
+
+The workspace starts with A4 portrait, 300 DPI, 5 mm margins, and 2 mm spacing.
+**Print settings** adjusts DPI, margins, spacing, and automatic 90° rotation.
+**Export PDF…** opens the system save dialog. Print the resulting PDF at actual
+size to preserve the dimensions shown in the editor.
 
 ## CLI
 
@@ -82,7 +95,7 @@ color management are outside the current API.
 
 Call `layout(&items, &options)` to inspect placements without exporting, then
 `render_pdf(&items, &layout)` to obtain PDF bytes. Layouts are immutable. Export
-checks source order, identifiers, pixel dimensions, quantities, and print widths;
+checks source order, identifiers, pixel dimensions, quantities, and print sizes;
 pixel contents may change while reusing a layout.
 
 `LayoutOptions` accepts custom page dimensions, A4 portrait, or
@@ -109,10 +122,10 @@ then by the most occupied space on earlier pages, so small images fill available
 gaps instead of spreading across the document. Whole-document candidates are
 retained because greedily filling a page can increase the total page count.
 Integer micrometres are used internally: available space rounds down,
-while image rectangles and gaps round up. Export retains exact aspect ratios.
-Rounding adds less than 0.001 mm per dimension. The search does not guarantee
-the minimum page count or preserve input order. Cropping, stretching, and
-automatic shrinking are never performed.
+while image rectangles and gaps round up. Rounding adds less than 0.001 mm per
+dimension. The search does not guarantee the minimum page count or preserve
+input order. `with_width_mm` preserves the source aspect ratio.
+`with_size_mm` sets both dimensions and lets callers change the aspect ratio.
 
 Empty inputs, zero quantities, invalid configuration, and images too large for
 an empty printable page return typed errors. Reduce the print width, change page
@@ -121,7 +134,7 @@ size/orientation, or allow rotation to accommodate an oversized image.
 ## Design system
 
 `packages/design-system` is the `@rust-foundry/ui` Bun workspace package. It holds
-19 base components, each in its own folder with implementation, Panda CSS styles,
+25 base components, each in its own folder with implementation, Panda CSS styles,
 Storybook stories, and Rstest browser tests. Higher-level Library components will
 be added only after their requirements are defined.
 
@@ -143,13 +156,13 @@ bun x playwright install chromium
 ```
 
 The package [README](packages/design-system/README.md) covers consuming the package
-and iterating on styles. This does not add the design system to the desktop shell.
+and iterating on styles. The desktop workspace uses the package's components and
+theme.
 
 ## Development
 
-The frontend is an empty, unstyled React shell with no starter branding or demo
-commands. The desktop icons are transparent placeholders required by Tauri's
-Windows build tooling. Replace them before distributing the app.
+The desktop icons are transparent placeholders required by Tauri's Windows build
+tooling. Replace them before distributing the app.
 
 The frontend uses React, TypeScript 7, Rsbuild, Rstest, and Biome. Install Node.js
 22.12 or newer and Bun, then run:

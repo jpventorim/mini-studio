@@ -98,6 +98,7 @@ pub(crate) struct Source {
     pixels: (u32, u32),
     quantity: usize,
     width_mm: Option<f64>,
+    height_mm: Option<f64>,
 }
 
 impl Source {
@@ -107,6 +108,7 @@ impl Source {
             pixels: item.image.dimensions(),
             quantity: item.quantity,
             width_mm: item.width_mm,
+            height_mm: item.height_mm,
         }
     }
 }
@@ -131,6 +133,7 @@ impl DocumentLayout {
                     && source.pixels == item.image.dimensions()
                     && source.quantity == item.quantity
                     && source.width_mm == item.width_mm
+                    && source.height_mm == item.height_mm
             })
     }
 }
@@ -251,7 +254,9 @@ pub fn layout<I: GenericImageView + ?Sized>(
         let width = item
             .width_mm
             .unwrap_or(f64::from(pixels_w) * 25.4 / options.dpi);
-        let height = width * f64::from(pixels_h) / f64::from(pixels_w);
+        let height = item
+            .height_mm
+            .unwrap_or(width * f64::from(pixels_h) / f64::from(pixels_w));
         if width <= 0.0 || height <= 0.0 {
             return Err(invalid("print dimensions must be positive"));
         }

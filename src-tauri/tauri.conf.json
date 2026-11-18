@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "App",
-        "width": 800,
-        "height": 600
+        "title": "Rust Foundry",
+        "width": 1180,
+        "height": 800,
+        "minWidth": 480,
+        "minHeight": 520
       }
     ],
     "security": {

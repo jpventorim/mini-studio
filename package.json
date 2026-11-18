@@ -7,10 +7,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "rsbuild dev",
+    "dev": "bun run build:ui && rsbuild dev",
     "build": "bun run typecheck && rsbuild build",
     "preview": "rsbuild preview",
-    "typecheck": "tsc --noEmit && tsc --project tsconfig.node.json --noEmit && bun run --cwd packages/design-system typecheck",
+    "typecheck": "bun run build:ui && tsc --noEmit && tsc --project tsconfig.node.json --noEmit && bun run --cwd packages/design-system typecheck",
     "lint": "bun run lint:js && bun run lint:rust",
     "lint:js": "biome check --error-on-warnings .",
     "lint:rust": "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings",
@@ -25,6 +25,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@rust-foundry/ui": "workspace:*",
+    "lucide-react": "^1.69.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "@tauri-apps/api": "^2.12.4"

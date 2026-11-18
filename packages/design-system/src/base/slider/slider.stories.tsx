@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { Meta, StoryObj } from "storybook-react-rsbuild";
+import { NumberField } from "../number-field";
 import { Slider } from "./index";
 
 const meta = {
@@ -19,6 +21,34 @@ export default meta;
 export const Default: StoryObj = {
   render: () => <Slider label="Ambient volume" defaultValue={40} />,
 };
+
+function EditableScale() {
+  const [scale, setScale] = useState(100);
+  return (
+    <div style={{ maxWidth: 300 }}>
+      <NumberField
+        label="Scale"
+        labelLayout="inline"
+        integer
+        unit="%"
+        min={1}
+        max={400}
+        value={scale}
+        onChange={setScale}
+      />
+      <Slider
+        label="Image scale"
+        hideHeading
+        min={1}
+        max={400}
+        value={scale}
+        onValueChange={setScale}
+      />
+    </div>
+  );
+}
+
+export const WithNumericInput: StoryObj = { render: () => <EditableScale /> };
 export const Disabled: StoryObj = {
   render: () => <Slider label="Ambient volume" defaultValue={40} disabled />,
 };

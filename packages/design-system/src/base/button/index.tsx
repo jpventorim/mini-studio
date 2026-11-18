@@ -6,12 +6,14 @@ export function Button({
   tone = "sapphire",
   variant = "solid",
   size = "md",
+  iconOnly = false,
   className = "",
   ...props
 }: Omit<ComponentProps<typeof BaseButton>, "className"> & {
   tone?: Tone;
   variant?: "solid" | "outline" | "ghost";
   size?: "sm" | "md";
+  iconOnly?: boolean;
   className?: string;
 }) {
   return (
@@ -21,6 +23,7 @@ export function Button({
       data-tone={tone}
       data-variant={variant}
       data-size={size}
+      data-icon-only={iconOnly || undefined}
     />
   );
 }

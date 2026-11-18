@@ -2,13 +2,15 @@ import { Slider as BaseSlider } from "@base-ui/react/slider";
 
 export function Slider({
   label,
+  hideHeading = false,
   ...props
 }: Omit<BaseSlider.Root.Props<number>, "className" | "children"> & {
   label: string;
+  hideHeading?: boolean;
 }) {
   return (
     <BaseSlider.Root defaultValue={50} {...props} className="rf-slider">
-      <div className="rf-slider-heading">
+      <div className={hideHeading ? "rf-visually-hidden" : "rf-slider-heading"}>
         <BaseSlider.Label className="rf-label">{label}</BaseSlider.Label>
         <BaseSlider.Value className="rf-slider-value" />
       </div>

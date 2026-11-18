@@ -1,7 +1,7 @@
 # @rust-foundry/ui
 
 An internal React design-system package. Start with [DESIGN.md](./DESIGN.md) for
-the living visual direction and open questions. This iteration contains 19 base
+the living visual direction and open questions. The library contains 25 base
 components; higher-level Library components are intentionally deferred.
 The system uses graph notebooks, plain working sheets, graphite text, and blue
 ink. **All components** is the current working system. Dark visual refinement

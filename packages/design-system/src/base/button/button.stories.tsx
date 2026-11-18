@@ -1,3 +1,4 @@
+import { Settings2 } from "lucide-react";
 import type { Meta, StoryObj } from "storybook-react-rsbuild";
 import { Button } from "./index";
 
@@ -18,6 +19,14 @@ export default meta;
 
 export const Default: StoryObj = {
   render: () => <Button>Begin adventure</Button>,
+};
+
+export const IconOnly: StoryObj = {
+  render: () => (
+    <Button iconOnly variant="outline" aria-label="Print settings">
+      <Settings2 size={18} aria-hidden="true" />
+    </Button>
+  ),
 };
 export const Variants: StoryObj = {
   render: () => (

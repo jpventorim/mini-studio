@@ -138,6 +138,32 @@ fn dpi_sets_print_size_and_explicit_width_overrides_it() {
 }
 
 #[test]
+fn independent_print_dimensions_change_placements_and_invalidate_old_layouts() {
+    let image = RgbImage::new(100, 50);
+    let options = LayoutOptions {
+        allow_rotation: false,
+        ..Default::default()
+    };
+    let stretched = [ImageItem::new("token", &image, 1).with_size_mm(40.0, 65.0)];
+    let result = layout(&stretched, &options).unwrap();
+    let placement = &result.pages()[0].placements[0];
+    assert_eq!((placement.width_mm, placement.height_mm), (40.0, 65.0));
+    let pdf = render_pdf(&stretched, &result).unwrap();
+    assert_eq!(
+        lopdf::Document::load_mem(&pdf).unwrap().get_pages().len(),
+        1
+    );
+
+    let proportional = [stretched[0].clone().with_width_mm(40.0)];
+    assert!(matches!(
+        render_pdf(&proportional, &result),
+        Err(Error::LayoutMismatch)
+    ));
+    let result = layout(&proportional, &options).unwrap();
+    assert_eq!(result.pages()[0].placements[0].height_mm, 20.0);
+}
+
+#[test]
 fn rotation_allows_an_otherwise_oversized_image() {
     let image = RgbaImage::from_pixel(250, 100, Rgba([200, 40, 80, 128]));
     let items = [ImageItem::new("wide", &image, 1).with_width_mm(250.0)];
