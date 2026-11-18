@@ -1,6 +1,6 @@
-import { EmptyState, Notice, PreviewControls } from "@rust-foundry/ui";
+import { Badge, EmptyState, Notice, PreviewControls } from "@rust-foundry/ui";
 import { ImagePlus } from "lucide-react";
-import { type CSSProperties, memo, useId, useMemo, useState } from "react";
+import { type CSSProperties, memo, useId, useMemo } from "react";
 import type { ImageSize, PreviewPage, PrintImage } from "./print-workspace";
 import { usePreviewCamera } from "./usePreviewCamera";
 
@@ -69,24 +69,41 @@ export function PrintPreview({
   pending: boolean;
   problem?: string;
 }) {
-  const [pageIndex, setPageIndex] = useState(0);
   const helpId = useId();
-  const { camera, fit, panning, sheet, stageProps, zoomIn, zoomOut } =
+  const { anchor, camera, fit, panning, strip, stageProps, zoomIn, zoomOut } =
     usePreviewCamera();
-  const currentIndex = Math.min(pageIndex, Math.max(0, pages.length - 1));
-  const page = pages[currentIndex];
-  const width = page?.widthMm ?? size.width;
-  const height = page?.heightMm ?? size.height;
+  const width = pages[0]?.widthMm ?? size.width;
+  const height = pages[0]?.heightMm ?? size.height;
   const sources = useMemo(
     () => new Map(images.map((image) => [image.id, image])),
     [images],
+  );
+  const sheets = useMemo(
+    () =>
+      pages.map((page, index) => (
+        <figure
+          className="preview-page"
+          // biome-ignore lint/suspicious/noArrayIndexKey: Each sheet is a fixed slot in print order.
+          key={index}
+        >
+          <div className="preview-sheet">
+            <PageArtwork page={page} index={index} sources={sources} />
+          </div>
+          {pages.length > 1 && (
+            <figcaption className="preview-page-label">
+              <Badge tone="neutral">Page {index + 1}</Badge>
+            </figcaption>
+          )}
+        </figure>
+      )),
+    [pages, sources],
   );
 
   return (
     <div className="preview">
       <p className="rf-visually-hidden" id={helpId}>
         Scroll to zoom and drag to pan. With the canvas focused, use plus or
-        minus to zoom, the arrow keys to pan, and 0 to fit the page.
+        minus to zoom, the arrow keys to pan, and 0 to fit the sheets.
       </p>
       <section
         {...stageProps}
@@ -105,32 +122,34 @@ export function PrintPreview({
         tabIndex={0}
       >
         <div
-          className="preview-sheet"
-          ref={sheet}
+          className="preview-pages"
+          ref={anchor}
           style={
             {
               "--sheet-ratio": width / height,
+              "--sheet-columns": Math.min(3, Math.max(1, pages.length)),
             } as CSSProperties
           }
         >
-          {page ? (
-            <PageArtwork
-              key={currentIndex}
-              page={page}
-              index={currentIndex}
-              sources={sources}
-            />
-          ) : (
-            <EmptyState
-              title={images.length ? "Waiting for layout" : "Your print sheet"}
-              description={
-                images.length
-                  ? "Images appear here when they fit."
-                  : "Add images to see them on the page."
-              }
-              icon={<ImagePlus size={28} strokeWidth={1.3} />}
-            />
-          )}
+          <div className="preview-strip" ref={strip}>
+            {pages.length > 0 ? (
+              sheets
+            ) : (
+              <div className="preview-sheet">
+                <EmptyState
+                  title={
+                    images.length ? "Waiting for layout" : "Your print sheet"
+                  }
+                  description={
+                    images.length
+                      ? "Images appear here when they fit."
+                      : "Add images to see them on the page."
+                  }
+                  icon={<ImagePlus size={28} strokeWidth={1.3} />}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -146,9 +165,7 @@ export function PrintPreview({
       )}
       <PreviewControls
         className="preview-dock"
-        page={currentIndex}
-        pageCount={pages.length}
-        onPageChange={setPageIndex}
+        fitLabel={pages.length > 1 ? "Fit sheets" : "Fit page"}
         zoom={camera.zoom}
         onFit={fit}
         onZoomIn={zoomIn}

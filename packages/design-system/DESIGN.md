@@ -104,7 +104,7 @@ performance. Reduced motion removes transitions and looping decoration.
 The desktop canvas uses NumberField for dimensions and quantity, SelectableRow
 for image entries, EmptyState for the clickable drop target and blank sheet,
 Readout for print dimensions, Notice for feedback, and PreviewControls for
-paging and zoom. DimensionFields stacks two numeric inputs with an aspect ratio
+fit and zoom. DimensionFields stacks two numeric inputs with an aspect ratio
 link beside them. Storybook shows the controls independently of the workspace.
 
 The selected tab underline moves between labels in 160ms using the shared easing.

@@ -32,8 +32,8 @@ componentTests("design-system-all-components", {
       .getByRole("status")
       .filter({ hasText: "File picker requested." })
       .waitFor();
-    await page.getByRole("button", { name: "Next page" }).click();
-    await page.getByText("Page 2 of 3").waitFor();
+    await page.getByRole("button", { name: "Zoom in" }).click();
+    await page.getByText("125%", { exact: true }).waitFor();
   },
   "reserves the scrollbar gutter when Advanced expands": async (page) => {
     const container = page.locator(".rf-scroll-area");

@@ -11,7 +11,7 @@ Run `bun run tauri dev` to open the print workspace. Add PNG or JPEG files with
 the clickable drop area or drag them into the window. Set the paper size and
 each image's quantity and scale. The live preview repacks the sheets as you
 edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
-bottom-right also adjust zoom and change pages. **Advanced** expands to show
+bottom-right adjust zoom and fit the sheets. **Advanced** expands to show
 exact width and height controls and a link to lock their aspect ratio.
 
 The workspace starts with A4 portrait, 300 DPI, 5 mm margins, and 2 mm spacing.

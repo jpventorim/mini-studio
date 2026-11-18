@@ -1,23 +1,19 @@
-import { ChevronLeft, ChevronRight, Maximize, Minus, Plus } from "lucide-react";
+import { Maximize, Minus, Plus } from "lucide-react";
 import { Button } from "../button";
 
 export function PreviewControls({
-  page,
-  pageCount,
-  onPageChange,
   zoom,
   onFit,
+  fitLabel = "Fit page",
   onZoomIn,
   onZoomOut,
   canZoomIn = true,
   canZoomOut = true,
   className = "",
 }: {
-  page: number;
-  pageCount: number;
-  onPageChange: (page: number) => void;
   zoom: number;
   onFit: () => void;
+  fitLabel?: string;
   onZoomIn: () => void;
   onZoomOut: () => void;
   canZoomIn?: boolean;
@@ -26,36 +22,6 @@ export function PreviewControls({
 }) {
   return (
     <div className={`rf-preview-controls ${className}`}>
-      {pageCount > 1 && (
-        <nav
-          className="rf-preview-control-group rf-paper-surface"
-          aria-label="Preview pages"
-        >
-          <Button
-            type="button"
-            iconOnly
-            variant="ghost"
-            aria-label="Previous page"
-            disabled={page <= 0}
-            onClick={() => onPageChange(page - 1)}
-          >
-            <ChevronLeft size={16} aria-hidden="true" />
-          </Button>
-          <span aria-live="polite">
-            Page {page + 1} of {pageCount}
-          </span>
-          <Button
-            type="button"
-            iconOnly
-            variant="ghost"
-            aria-label="Next page"
-            disabled={page >= pageCount - 1}
-            onClick={() => onPageChange(page + 1)}
-          >
-            <ChevronRight size={16} aria-hidden="true" />
-          </Button>
-        </nav>
-      )}
       <fieldset
         className="rf-preview-control-group rf-paper-surface"
         aria-label="Preview zoom"
@@ -64,8 +30,8 @@ export function PreviewControls({
           type="button"
           iconOnly
           variant="ghost"
-          aria-label="Fit page"
-          title="Fit page"
+          aria-label={fitLabel}
+          title={fitLabel}
           onClick={onFit}
         >
           <Maximize size={15} aria-hidden="true" />
@@ -84,9 +50,9 @@ export function PreviewControls({
         </Button>
         <span
           className="rf-preview-zoom-value"
-          title="Zoom relative to fit page"
+          title="Zoom relative to a fitted page"
         >
-          {Math.round(zoom * 100)}%
+          {zoom < 0.01 ? "<1%" : `${Math.round(zoom * 100)}%`}
         </span>
         <Button
           type="button"

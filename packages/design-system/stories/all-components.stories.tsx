@@ -67,7 +67,6 @@ function AllComponents() {
   const [scale, setScale] = useState(100);
   const [selectedImage, selectImage] = useState("Scout.png");
   const [notice, setNotice] = useState<string | null>("Saved print-sheet.pdf");
-  const [page, setPage] = useState(0);
   const [zoom, setZoom] = useState(1);
   const materialSwatches = [
     { name: "Working sheet", color: theme["--rf-paper"] },
@@ -375,9 +374,6 @@ function AllComponents() {
           </Specimen>
           <Specimen name="Preview controls">
             <PreviewControls
-              page={page}
-              pageCount={3}
-              onPageChange={setPage}
               zoom={zoom}
               onFit={() => setZoom(1)}
               onZoomIn={() => setZoom((value) => value + 0.25)}

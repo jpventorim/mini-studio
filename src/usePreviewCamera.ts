@@ -22,22 +22,23 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function keepSheetInView(
+function keepSheetsInView(
   camera: Camera,
   viewport: Point,
   sheet: Point,
   center: Point,
+  layout: Point,
 ) {
   const halfWidth = (sheet.x * camera.zoom) / 2;
   const halfHeight = (sheet.y * camera.zoom) / 2;
   const x = clamp(
     camera.x,
-    56 - center.x - halfWidth,
+    56 - center.x - (layout.x - sheet.x / 2) * camera.zoom,
     viewport.x - center.x + halfWidth - 56,
   );
   const y = clamp(
     camera.y,
-    56 - center.y - halfHeight,
+    56 - center.y - (layout.y - sheet.y / 2) * camera.zoom,
     viewport.y - center.y + halfHeight - 56,
   );
   return x === camera.x && y === camera.y ? camera : { ...camera, x, y };
@@ -45,30 +46,37 @@ function keepSheetInView(
 
 export function usePreviewCamera() {
   const stage = useRef<HTMLElement>(null);
-  const sheet = useRef<HTMLDivElement>(null);
+  const anchor = useRef<HTMLDivElement>(null);
+  const strip = useRef<HTMLDivElement>(null);
   const [camera, setCamera] = useState(fittedCamera);
   const [panning, setPanning] = useState(false);
   const pointer = useRef<(Point & { id: number }) | null>(null);
 
   const update = useCallback((change: (previous: Camera) => Camera) => {
     const canvas = stage.current;
-    const page = sheet.current;
-    if (!canvas || !page || !canvas.clientWidth) return;
+    const page = anchor.current;
+    const pages = strip.current;
+    if (!canvas || !page || !pages || !canvas.clientWidth) return;
     const viewport = { x: canvas.clientWidth, y: canvas.clientHeight };
     const paper = { x: page.offsetWidth, y: page.offsetHeight };
     const center = {
       x: page.offsetLeft + paper.x / 2,
       y: page.offsetTop + paper.y / 2,
     };
+    const layout = { x: pages.offsetWidth, y: pages.offsetHeight };
     setCamera((previous) =>
-      keepSheetInView(change(previous), viewport, paper, center),
+      keepSheetsInView(change(previous), viewport, paper, center, layout),
     );
   }, []);
 
   const zoomAt = useCallback(
     (factor: number, anchor: Point) => {
       update((previous) => {
-        const zoom = clamp(previous.zoom * factor, 0.25, 8);
+        const zoom = clamp(
+          previous.zoom * factor,
+          Math.min(0.25, previous.zoom),
+          8,
+        );
         if (zoom === previous.zoom) return previous;
         const ratio = zoom / previous.zoom;
         return {
@@ -83,8 +91,9 @@ export function usePreviewCamera() {
 
   useEffect(() => {
     const canvas = stage.current;
-    const page = sheet.current;
-    if (!canvas || !page) return;
+    const page = anchor.current;
+    const pages = strip.current;
+    if (!canvas || !page || !pages) return;
 
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
@@ -101,6 +110,7 @@ export function usePreviewCamera() {
     const resize = new ResizeObserver(() => update((previous) => previous));
     resize.observe(canvas);
     resize.observe(page);
+    resize.observe(pages);
     canvas.addEventListener("wheel", wheel, { passive: false });
     return () => {
       resize.disconnect();
@@ -109,7 +119,35 @@ export function usePreviewCamera() {
   }, [update, zoomAt]);
 
   function fit() {
-    setCamera(fittedCamera);
+    const canvas = stage.current;
+    const page = anchor.current;
+    const pages = strip.current;
+    if (!canvas || !page || !pages?.offsetWidth) return;
+    const stripWidth = pages.offsetWidth;
+    const stripHeight = pages.offsetHeight;
+    const pageWidth = page.offsetWidth;
+    const pageHeight = page.offsetHeight;
+    if (stripWidth === pageWidth && stripHeight === pageHeight) {
+      setCamera(fittedCamera);
+      return;
+    }
+    const availableWidth =
+      2 * (canvas.clientWidth - page.offsetLeft) - pageWidth;
+    const styles = getComputedStyle(canvas);
+    const availableHeight =
+      canvas.clientHeight -
+      Number.parseFloat(styles.paddingTop) -
+      Number.parseFloat(styles.paddingBottom);
+    const zoom = Math.min(
+      1,
+      Math.max(1, availableWidth - 48) / stripWidth,
+      Math.max(1, availableHeight - 30) / stripHeight,
+    );
+    setCamera({
+      x: ((pageWidth - stripWidth) * zoom) / 2,
+      y: ((pageHeight - stripHeight) * zoom) / 2,
+      zoom,
+    });
   }
 
   function pan(x: number, y: number) {
@@ -158,7 +196,8 @@ export function usePreviewCamera() {
   }
 
   return {
-    sheet,
+    anchor,
+    strip,
     camera,
     fit,
     zoomIn: () => zoomAt(1.2, { x: 0, y: 0 }),

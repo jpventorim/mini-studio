@@ -220,14 +220,50 @@ body {
   outline-offset: -3px;
 }
 
+.preview-pages {
+  --sheet-width: max(
+    120px,
+    min(100cqw - 48px, (100cqh - 30px) * var(--sheet-ratio))
+  );
+  position: relative;
+  width: var(--sheet-width);
+  aspect-ratio: var(--sheet-ratio);
+}
+
+.preview-strip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--sheet-columns), var(--sheet-width));
+  width: max-content;
+  gap: 72px 32px;
+  transform-origin: calc(var(--sheet-width) / 2)
+    calc(var(--sheet-width) / var(--sheet-ratio) / 2);
+  transform: translate3d(var(--camera-x), var(--camera-y), 0)
+    scale(var(--camera-zoom));
+}
+
+.preview-page {
+  position: relative;
+  margin: 0;
+}
+
+.preview-page-label {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline: 0;
+  text-align: center;
+  transform: scale(min(2, calc(1 / var(--camera-zoom))));
+  transform-origin: center top;
+}
+
 .preview-sheet {
   position: relative;
   display: grid;
   place-items: center;
-  width: max(120px, min(100cqw - 48px, (100cqh - 30px) * var(--sheet-ratio)));
+  width: var(--sheet-width);
   aspect-ratio: var(--sheet-ratio);
-  transform: translate3d(var(--camera-x), var(--camera-y), 0)
-    scale(var(--camera-zoom));
   background: #fff;
   border: 1px solid var(--rf-paper-edge);
   box-shadow:

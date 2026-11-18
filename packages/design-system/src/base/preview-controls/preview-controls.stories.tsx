@@ -9,15 +9,12 @@ const meta = {
 } satisfies Meta;
 export default meta;
 
-function Controls({ pageCount }: { pageCount: number }) {
-  const [page, setPage] = useState(0);
+function Controls({ fitLabel }: { fitLabel?: string }) {
   const [zoom, setZoom] = useState(1);
   return (
     <PreviewControls
-      page={page}
-      pageCount={pageCount}
-      onPageChange={setPage}
       zoom={zoom}
+      fitLabel={fitLabel}
       onFit={() => setZoom(1)}
       onZoomIn={() => setZoom((value) => value + 0.25)}
       onZoomOut={() => setZoom((value) => value - 0.25)}
@@ -26,7 +23,7 @@ function Controls({ pageCount }: { pageCount: number }) {
     />
   );
 }
-export const Default: StoryObj = { render: () => <Controls pageCount={3} /> };
-export const SinglePage: StoryObj = {
-  render: () => <Controls pageCount={1} />,
+export const Default: StoryObj = { render: () => <Controls /> };
+export const MultipleSheets: StoryObj = {
+  render: () => <Controls fitLabel="Fit sheets" />,
 };
