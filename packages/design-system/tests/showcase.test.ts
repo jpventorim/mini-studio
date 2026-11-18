@@ -3,6 +3,37 @@ import { expect } from "@rstest/core";
 import { componentTests } from "./browser";
 
 componentTests("design-system-all-components", {
+  "showcases the print workspace controls on the start page": async (page) => {
+    for (const name of [
+      "Number field",
+      "Selectable row",
+      "Empty state",
+      "Readout",
+      "Notice",
+      "Preview controls",
+    ]) {
+      await page.getByRole("heading", { name, exact: true }).waitFor();
+    }
+    await page.getByRole("combobox", { name: "Paper" }).click();
+    await page.getByRole("option", { name: "Letter" }).click();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+    expect(
+      await page.getByRole("textbox", { name: "Quantity" }).inputValue(),
+    ).toBe("3");
+    await page.getByRole("button", { name: /Guardian.png/ }).press("Space");
+    expect(
+      await page
+        .getByRole("button", { name: /Guardian.png/ })
+        .getAttribute("aria-pressed"),
+    ).toBe("true");
+    await page.getByRole("button", { name: /Drop images here/ }).press("Enter");
+    await page
+      .getByRole("status")
+      .filter({ hasText: "File picker requested." })
+      .waitFor();
+    await page.getByRole("button", { name: "Next page" }).click();
+    await page.getByText("Page 2 of 3").waitFor();
+  },
   "keeps controls operable and focus visible in forced colors": async (
     page,
   ) => {

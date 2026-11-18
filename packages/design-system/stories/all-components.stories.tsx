@@ -1,5 +1,5 @@
-import { Feather } from "lucide-react";
-import type { ReactNode } from "react";
+import { Feather, Files, Image, Settings2 } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import type { Meta, StoryObj } from "storybook-react-rsbuild";
 import { Accordion } from "../src/base/accordion";
 import { Alert } from "../src/base/alert";
@@ -8,11 +8,17 @@ import { Badge } from "../src/base/badge";
 import { Button } from "../src/base/button";
 import { Checkbox } from "../src/base/checkbox";
 import { Dialog } from "../src/base/dialog";
+import { EmptyState } from "../src/base/empty-state";
+import { Notice } from "../src/base/notice";
+import { NumberField } from "../src/base/number-field";
 import { Panel } from "../src/base/panel";
 import { Popover } from "../src/base/popover";
+import { PreviewControls } from "../src/base/preview-controls";
 import { Progress } from "../src/base/progress";
 import { RadioGroup } from "../src/base/radio-group";
+import { Readout } from "../src/base/readout";
 import { Select } from "../src/base/select";
+import { SelectableRow } from "../src/base/selectable-row";
 import { Separator } from "../src/base/separator";
 import { Slider } from "../src/base/slider";
 import { Switch } from "../src/base/switch";
@@ -56,6 +62,12 @@ function Specimen({ name, children }: { name: string; children: ReactNode }) {
 
 function AllComponents() {
   const theme = useTheme() === "dark" ? darkTheme : lightTheme;
+  const [quantity, setQuantity] = useState(2);
+  const [scale, setScale] = useState(100);
+  const [selectedImage, selectImage] = useState("Scout.png");
+  const [notice, setNotice] = useState<string | null>("Saved print-sheet.pdf");
+  const [page, setPage] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const materialSwatches = [
     { name: "Working sheet", color: theme["--rf-paper"] },
     {
@@ -110,6 +122,19 @@ function AllComponents() {
                 Save note
               </Button>
               <Button variant="outline">Secondary</Button>
+              <Popover
+                title="Print settings"
+                description="Margins and spacing apply to every sheet."
+                trigger={
+                  <Button
+                    iconOnly
+                    variant="outline"
+                    aria-label="Print settings"
+                  >
+                    <Settings2 size={18} aria-hidden="true" />
+                  </Button>
+                }
+              />
             </div>
           </Specimen>
           <Specimen name="Badge">
@@ -149,6 +174,21 @@ function AllComponents() {
               ]}
             />
           </Specimen>
+          <Specimen name="Compact select">
+            <div style={{ width: 102 }}>
+              <Select
+                label="Paper"
+                hideLabel
+                compact
+                surface="mounted"
+                defaultValue="a4"
+                items={[
+                  { value: "a4", label: "A4" },
+                  { value: "letter", label: "Letter" },
+                ]}
+              />
+            </div>
+          </Specimen>
           <Specimen name="Textarea">
             <Textarea label="Notes" placeholder="Enter notes" />
           </Specimen>
@@ -169,7 +209,24 @@ function AllComponents() {
             />
           </Specimen>
           <Specimen name="Slider">
-            <Slider label="Ambient volume" defaultValue={40} />
+            <NumberField
+              label="Scale"
+              labelLayout="inline"
+              integer
+              unit="%"
+              min={1}
+              max={400}
+              value={scale}
+              onChange={setScale}
+            />
+            <Slider
+              label="Image scale"
+              hideHeading
+              min={1}
+              max={400}
+              value={scale}
+              onValueChange={setScale}
+            />
           </Specimen>
           <Specimen name="Progress">
             <Progress label="Preparing your workspace" value={65} />
@@ -229,6 +286,103 @@ function AllComponents() {
                   content: "Additional section content.",
                 },
               ]}
+            />
+          </Specimen>
+        </div>
+      </Section>
+      <Section
+        title="Print workspace"
+        description="Image selection, print dimensions, and page preview controls."
+      >
+        <div className="rf-demo-grid">
+          <Specimen name="Number field">
+            <NumberField
+              label="Quantity"
+              labelLayout="inline"
+              integer
+              step={1}
+              min={1}
+              max={99}
+              value={quantity}
+              onChange={setQuantity}
+            />
+          </Specimen>
+          <Specimen name="Selectable row">
+            <div className="rf-stack">
+              {["Scout.png", "Guardian.png"].map((label) => (
+                <SelectableRow
+                  key={label}
+                  label={label}
+                  selected={selectedImage === label}
+                  leading={<Image size={18} aria-hidden="true" />}
+                  detail={label === "Scout.png" ? `×${quantity}` : "×1"}
+                  onClick={() => selectImage(label)}
+                />
+              ))}
+            </div>
+          </Specimen>
+          <Specimen name="Empty state">
+            <EmptyState
+              variant="drop"
+              title="Drop images here"
+              description="or browse PNG or JPEG files"
+              icon={<Files size={23} />}
+              onActivate={() => setNotice("File picker requested.")}
+            />
+          </Specimen>
+          <Specimen name="Readout">
+            <Readout
+              label="Print width"
+              value={`${((25.4 * scale) / 100).toFixed(2)} mm`}
+              action={
+                scale !== 100 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setScale(100)}
+                  >
+                    Reset to scale
+                  </Button>
+                )
+              }
+            />
+          </Specimen>
+          <Specimen name="Notice">
+            {notice ? (
+              <Notice
+                action={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setNotice(null)}
+                  >
+                    Dismiss
+                  </Button>
+                }
+              >
+                {notice}
+              </Notice>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setNotice("Saved print-sheet.pdf")}
+              >
+                Show notice
+              </Button>
+            )}
+          </Specimen>
+          <Specimen name="Preview controls">
+            <PreviewControls
+              page={page}
+              pageCount={3}
+              onPageChange={setPage}
+              zoom={zoom}
+              onFit={() => setZoom(1)}
+              onZoomIn={() => setZoom((value) => value + 0.25)}
+              onZoomOut={() => setZoom((value) => value - 0.25)}
+              canZoomIn={zoom < 2}
+              canZoomOut={zoom > 0.25}
             />
           </Specimen>
         </div>
