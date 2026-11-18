@@ -1,7 +1,7 @@
 import {
   Accordion,
   Button,
-  Checkbox,
+  DimensionFields,
   Notice,
   NumberField,
   Readout,
@@ -125,42 +125,28 @@ export function ImageInspector({
         headingLevel={3}
         items={[
           {
-            value: "sizing",
-            title: "Advanced sizing",
+            value: "advanced",
+            title: "Advanced",
             content: (
-              <div className="advanced-sizing">
-                <div className="dimension-fields">
-                  <NumberField
-                    label="Width"
-                    unit="mm"
-                    value={size.width}
-                    min={0.01}
-                    max={1000}
-                    onChange={(value) => setDimension("width", value)}
-                  />
-                  <NumberField
-                    label="Height"
-                    unit="mm"
-                    value={size.height}
-                    min={0.01}
-                    max={1000}
-                    onChange={(value) => setDimension("height", value)}
-                  />
-                </div>
-                <Checkbox
-                  label="Lock aspect ratio"
-                  checked={image.lockRatio}
-                  onCheckedChange={(lockRatio) =>
-                    update({
-                      lockRatio,
-                      customSize:
-                        lockRatio && image.customSize
-                          ? { width: size.width, height: size.width / ratio }
-                          : image.customSize,
-                    })
-                  }
-                />
-              </div>
+              <DimensionFields
+                unit="mm"
+                width={size.width}
+                height={size.height}
+                min={0.01}
+                max={1000}
+                locked={image.lockRatio}
+                onWidthChange={(value) => setDimension("width", value)}
+                onHeightChange={(value) => setDimension("height", value)}
+                onLockedChange={(lockRatio) =>
+                  update({
+                    lockRatio,
+                    customSize:
+                      lockRatio && image.customSize
+                        ? { width: size.width, height: size.width / ratio }
+                        : image.customSize,
+                  })
+                }
+              />
             ),
           },
         ]}

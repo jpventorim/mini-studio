@@ -5,6 +5,7 @@ export * from "./badge";
 export * from "./button";
 export * from "./checkbox";
 export * from "./dialog";
+export * from "./dimension-fields";
 export * from "./empty-state";
 export * from "./notice";
 export * from "./number-field";

@@ -28,6 +28,7 @@ import { Textarea } from "../src/base/textarea";
 import { Tooltip } from "../src/base/tooltip";
 import { darkTheme, lightTheme } from "../src/theme/contracts";
 import { useTheme } from "../src/theme/provider";
+import { DimensionFieldsExample } from "./dimension-fields-example";
 
 function Section({
   title,
@@ -384,6 +385,23 @@ function AllComponents() {
               canZoomIn={zoom < 2}
               canZoomOut={zoom > 0.25}
             />
+          </Specimen>
+          <Specimen name="Dimension fields">
+            <div
+              className="rf-scroll-area"
+              style={{ maxHeight: 116, padding: 4 }}
+            >
+              <Accordion
+                headingLevel={4}
+                items={[
+                  {
+                    value: "advanced",
+                    title: "Advanced",
+                    content: <DimensionFieldsExample />,
+                  },
+                ]}
+              />
+            </div>
           </Specimen>
         </div>
       </Section>

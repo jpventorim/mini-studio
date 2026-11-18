@@ -139,6 +139,37 @@ export const foundationStyles = defineGlobalStyles({
     clipPath: "inset(50%)",
     whiteSpace: "nowrap",
   },
+  ".rf-scroll-area": {
+    overflowY: "auto",
+    overscrollBehavior: "contain",
+    scrollbarGutter: "stable",
+    scrollbarWidth: "thin",
+    scrollbarColor: "var(--rf-control-edge) transparent",
+  },
+  "@supports selector(::-webkit-scrollbar)": {
+    ".rf-scroll-area": {
+      scrollbarWidth: "auto",
+      scrollbarColor: "auto",
+    },
+    ".rf-scroll-area::-webkit-scrollbar": {
+      width: "10px",
+    },
+    ".rf-scroll-area::-webkit-scrollbar-button": {
+      display: "none",
+    },
+    ".rf-scroll-area::-webkit-scrollbar-track": {
+      background: "transparent",
+    },
+    ".rf-scroll-area::-webkit-scrollbar-thumb": {
+      border: "2px solid transparent",
+      borderRadius: "8px",
+      backgroundColor: "var(--rf-control-edge)",
+      backgroundClip: "padding-box",
+    },
+    ".rf-scroll-area::-webkit-scrollbar-thumb:hover": {
+      backgroundColor: "var(--rf-paper-muted)",
+    },
+  },
   ".rf-hint": {
     fontSize: "0.82rem",
     color: "var(--rf-muted)",
@@ -186,6 +217,14 @@ export const foundationStyles = defineGlobalStyles({
       },
   },
   "@media (forced-colors: active)": {
+    ".rf-scroll-area": {
+      scrollbarColor: "auto",
+    },
+    ".rf-scroll-area::-webkit-scrollbar-thumb, .rf-scroll-area::-webkit-scrollbar-thumb:hover":
+      {
+        backgroundColor: "ButtonText",
+        forcedColorAdjust: "none",
+      },
     ".rf-theme, .rf-theme[data-theme], .rf-paper-surface": {
       "--rf-canvas-ink": "CanvasText",
       "--rf-canvas-muted": "CanvasText",

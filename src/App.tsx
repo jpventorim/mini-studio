@@ -203,7 +203,7 @@ function App() {
         <header className="workspace-toolbar">
           <h1 className="workspace-brand">
             <img src="/rusty_bob.svg" alt="" width={23} height={33} />
-            Rust Foundry
+            Mini Studio
           </h1>
           <Panel className="paper-controls">
             <Select
@@ -328,12 +328,15 @@ function App() {
             </header>
 
             <div
-              className="image-editor-scroll"
+              className="image-editor-scroll rf-scroll-area"
               id="image-editor"
               hidden={!imagesOpen}
             >
               {images.length ? (
-                <ul className="asset-list" aria-label="Imported images">
+                <ul
+                  className="asset-list rf-scroll-area"
+                  aria-label="Imported images"
+                >
                   {images.map((image) => (
                     <li key={image.id}>
                       <SelectableRow

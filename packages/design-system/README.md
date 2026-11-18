@@ -1,7 +1,7 @@
 # @rust-foundry/ui
 
 An internal React design-system package. Start with [DESIGN.md](./DESIGN.md) for
-the living visual direction and open questions. The library contains 25 base
+the living visual direction and open questions. The library contains 26 base
 components; higher-level Library components are intentionally deferred.
 The system uses graph notebooks, plain working sheets, graphite text, and blue
 ink. **All components** is the current working system. Dark visual refinement
@@ -72,6 +72,9 @@ For a plain paper area, combine `rf-surface-paper` and `rf-paper-surface`.
 shared paper, independent writing boxes, validation, and compact forms.
 **Themes** shows both palettes, mixed-theme overlays, and a switcher. These
 forms are story fixtures, not higher-level library components.
+
+Use `rf-scroll-area` for a vertically scrolling surface with a reserved gutter
+and a thin thumb in the current theme.
 
 Each `src/base/<component>/` folder has `index.tsx`, `styles.ts`, a `.stories.tsx`,
 and a `.test.ts` file. Base UI primitives keep their behavior and state props;

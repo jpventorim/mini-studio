@@ -55,13 +55,9 @@ body {
   width: 102px;
 }
 
-.print-settings,
-.advanced-sizing {
+.print-settings {
   display: grid;
   gap: 12px;
-}
-
-.print-settings {
   margin-top: 14px;
 }
 
@@ -89,8 +85,6 @@ body {
 }
 
 .image-editor-scroll {
-  overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 0 18px 24px;
 }
 
@@ -143,7 +137,6 @@ body {
   padding: 3px;
   margin: 3px 0 0;
   max-height: clamp(120px, 27vh, 252px);
-  overflow: auto;
 }
 
 .asset-list li + li {

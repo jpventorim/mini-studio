@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "rust-foundry",
+  "productName": "Mini Studio",
   "version": "0.1.0",
   "identifier": "com.jpventorim.rust-foundry",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Rust Foundry",
+        "title": "Mini Studio",
         "width": 1180,
         "height": 800,
         "minWidth": 480,

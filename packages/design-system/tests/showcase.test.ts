@@ -11,6 +11,7 @@ componentTests("design-system-all-components", {
       "Readout",
       "Notice",
       "Preview controls",
+      "Dimension fields",
     ]) {
       await page.getByRole("heading", { name, exact: true }).waitFor();
     }
@@ -33,6 +34,41 @@ componentTests("design-system-all-components", {
       .waitFor();
     await page.getByRole("button", { name: "Next page" }).click();
     await page.getByText("Page 2 of 3").waitFor();
+  },
+  "reserves the scrollbar gutter when Advanced expands": async (page) => {
+    const container = page.locator(".rf-scroll-area");
+    const advanced = container.getByRole("button", {
+      name: "Advanced",
+      exact: true,
+    });
+    const width = await advanced.evaluate(
+      (element) => element.getBoundingClientRect().width,
+    );
+    await advanced.click();
+    await container
+      .getByRole("button", { name: "Lock aspect ratio" })
+      .waitFor();
+    await page.waitForFunction(() => {
+      const scrollArea = document.querySelector(".rf-scroll-area");
+      return scrollArea && scrollArea.scrollHeight > scrollArea.clientHeight;
+    });
+    expect(
+      await advanced.evaluate(
+        (element) => element.getBoundingClientRect().width,
+      ),
+    ).toBe(width);
+    expect(
+      await container.evaluate((element) => {
+        if (CSS.supports("selector(::-webkit-scrollbar)")) {
+          return (
+            getComputedStyle(element, "::-webkit-scrollbar").width === "10px" &&
+            getComputedStyle(element, "::-webkit-scrollbar-button").display ===
+              "none"
+          );
+        }
+        return getComputedStyle(element).scrollbarWidth === "thin";
+      }),
+    ).toBe(true);
   },
   "keeps controls operable and focus visible in forced colors": async (
     page,

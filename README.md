@@ -1,4 +1,4 @@
-# Rust Foundry
+# Mini Studio
 
 Pack one or more images, each with an independent quantity, into a multi-page
 PDF using `image`, `bin-packing`, and `krilla`. The `image-packing` package contains
@@ -11,8 +11,8 @@ Run `bun run tauri dev` to open the print workspace. Add PNG or JPEG files with
 the clickable drop area or drag them into the window. Set the paper size and
 each image's quantity and scale. The live preview repacks the sheets as you
 edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
-bottom-right also adjust zoom and change pages. **Advanced sizing** expands to
-show exact width and height controls.
+bottom-right also adjust zoom and change pages. **Advanced** expands to show
+exact width and height controls and a link to lock their aspect ratio.
 
 The workspace starts with A4 portrait, 300 DPI, 5 mm margins, and 2 mm spacing.
 **Print settings** adjusts DPI, margins, spacing, and automatic 90° rotation.
@@ -152,7 +152,7 @@ size/orientation, or allow rotation to accommodate an oversized image.
 ## Design system
 
 `packages/design-system` is the `@rust-foundry/ui` Bun workspace package. It holds
-25 base components, each in its own folder with implementation, Panda CSS styles,
+26 base components, each in its own folder with implementation, Panda CSS styles,
 Storybook stories, and Rstest browser tests. Higher-level Library components will
 be added only after their requirements are defined.
 

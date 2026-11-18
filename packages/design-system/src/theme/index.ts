@@ -6,6 +6,7 @@ import { badgeStyles } from "./../base/badge/styles";
 import { buttonStyles } from "./../base/button/styles";
 import { checkboxStyles } from "./../base/checkbox/styles";
 import { dialogStyles } from "./../base/dialog/styles";
+import { dimensionFieldsStyles } from "./../base/dimension-fields/styles";
 import { emptyStateStyles } from "./../base/empty-state/styles";
 import { noticeStyles } from "./../base/notice/styles";
 import { numberFieldStyles } from "./../base/number-field/styles";
@@ -44,6 +45,7 @@ function mergeStyles(...sources: Record<string, unknown>[]) {
 export const globalCss = mergeStyles(
   foundationStyles,
   buttonStyles,
+  dimensionFieldsStyles,
   badgeStyles,
   panelStyles,
   separatorStyles,

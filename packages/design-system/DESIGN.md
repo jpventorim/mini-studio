@@ -1,7 +1,7 @@
 # Foundry UI — paper design system
 
 The design system takes its character from graph notebooks, printed reference
-sheets, and handwritten session notes. It supports 25 base components. Light is
+sheets, and handwritten session notes. It supports 26 base components. Light is
 the active design target; the dark palette stays functional while its visual
 review is deferred.
 
@@ -104,7 +104,8 @@ performance. Reduced motion removes transitions and looping decoration.
 The desktop canvas uses NumberField for dimensions and quantity, SelectableRow
 for image entries, EmptyState for the clickable drop target and blank sheet,
 Readout for print dimensions, Notice for feedback, and PreviewControls for
-paging and zoom. Storybook shows the controls independently of the workspace.
+paging and zoom. DimensionFields stacks two numeric inputs with an aspect ratio
+link beside them. Storybook shows the controls independently of the workspace.
 
 The selected tab underline moves between labels in 160ms using the shared easing.
 Reduced motion places it immediately. It carries selection without ornamenting
