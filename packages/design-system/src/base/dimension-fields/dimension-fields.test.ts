@@ -2,20 +2,28 @@ import { expect } from "@rstest/core";
 import { componentTests } from "../../../tests/browser";
 
 componentTests("base-dimensionfields", {
-  "stacks the fields and centers the link beside them": async (page) => {
+  "stacks the fields and centers the link between the input boxes": async (
+    page,
+  ) => {
     const layout = await page
       .locator(".rf-dimension-fields")
       .evaluate((element) => {
-        const [width, height, link] = [...element.children].map((child) =>
-          child.getBoundingClientRect(),
-        );
+        const [width, height, link] = [
+          ...element.querySelectorAll(".rf-number-box, .rf-dimension-link"),
+        ].map((child) => child.getBoundingClientRect());
         return {
           sameWidth: width.width === height.width && width.x === height.x,
           below: height.top > width.bottom,
           beside: link.left > width.right,
           centered:
             Math.abs(
-              link.top + link.height / 2 - (width.top + height.bottom) / 2,
+              link.top +
+                link.height / 2 -
+                (width.top +
+                  width.height / 2 +
+                  height.top +
+                  height.height / 2) /
+                  2,
             ) < 1,
         };
       });
