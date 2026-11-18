@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/image-packing"]
+members = ["crates/image-packing", "crates/image-manipulation"]
 exclude = ["src-tauri"]
 resolver = "3"
 

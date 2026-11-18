@@ -619,6 +619,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "image-manipulation"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "image",
+ "image-packing",
+ "png",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "image-packing"
 version = "0.1.0"
 dependencies = [

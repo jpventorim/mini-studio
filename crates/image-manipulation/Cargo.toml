@@ -1,0 +1,27 @@
+[package]
+name = "image-manipulation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Trim and size images into mirrored, foldable paper standees"
+
+[[bin]]
+name = "image-manipulation"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[features]
+default = []
+cli = ["dep:clap", "dep:anyhow", "dep:png"]
+
+[dependencies]
+image.workspace = true
+thiserror = "2.0.21"
+clap = { version = "4.6.7", features = ["derive"], optional = true }
+anyhow = { version = "1.0.104", optional = true }
+png = { version = "0.18.1", optional = true }
+
+[dev-dependencies]
+tempfile = "3.27.0"
+image-packing = { path = "../image-packing" }

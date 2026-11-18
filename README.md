@@ -19,6 +19,24 @@ The workspace starts with A4 portrait, 300 DPI, 5 mm margins, and 2 mm spacing.
 **Export PDF…** opens the system save dialog. Print the resulting PDF at actual
 size to preserve the dimensions shown in the editor.
 
+The workspace also contains [`image-manipulation`](crates/image-manipulation/README.md)
+to trim and size an image into a vertically mirrored, foldable standee with
+square base tabs. It defaults to a 25 mm grid, size 1, 1 mm clearance per edge
+(a 23 mm base), artwork up to 90% of the base width, fixed panels 1.5 times the
+base width in height, grounded placement, and white tabs with a halfway line.
+Choose `--position grounded|hovering|flying` to raise the artwork by 0%, 10%, or
+30% of panel height. All positions keep the same strip dimensions and at least
+1 mm of clean cutting space. Its optional development CLI writes PNGs with
+physical-resolution metadata:
+
+```sh
+cargo run -p image-manipulation --features cli -- \
+  --input figure.png --output standee.png --size 1
+```
+
+Both crates operate independently; prepared images can be passed to packing
+with the physical width returned by the manipulation crate.
+
 ## CLI
 
 Requires Rust 1.99 or newer.
