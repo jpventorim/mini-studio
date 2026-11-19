@@ -50,6 +50,11 @@ and physical dimensions; `image-packing` arranges those results and exports PDF.
 Preview and export use the same prepared images and layout. Neither crate calls
 the other at runtime. Base shape is currently fixed to a rectangle, and the
 available standee height is derived from the selected paper and margins.
+Prepared images and previews are cached separately from packing. Layout edits
+reuse them; increasing a numbered quantity generates only the additional
+copies. Geometry changes rebuild only the affected source. Unused copies and
+removed sources are released. Previews preserve aspect ratio without upscaling,
+and PDFs retain full-resolution images.
 Base width takes priority: artwork panels shorten when the strip reaches that
 height limit. The two folded feet together span the grid footprint after
 clearance. Below size 4, the outer sections fold underneath; sizes 4 and 5 use

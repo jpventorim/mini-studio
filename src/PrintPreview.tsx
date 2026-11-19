@@ -48,6 +48,7 @@ const PageArtwork = memo(function PageArtwork({
           >
             <img
               src={image.preview}
+              decoding="async"
               alt=""
               draggable={false}
               style={
@@ -89,14 +90,19 @@ export function PrintPreview({
     usePreviewCamera();
   const width = pages[0]?.widthMm ?? size.width;
   const height = pages[0]?.heightMm ?? size.height;
+  // Image settings can change while the displayed preview stays the same.
+  // Only membership changes need a new visibility map before repacking finishes.
+  const imageIds = images.map((image) => image.id).join(",");
   const sources = useMemo(() => {
-    const active = new Set(images.map((image) => image.id));
+    const active = new Set(
+      imageIds === "" ? [] : imageIds.split(",").map(Number),
+    );
     return new Map(
       preparedImages
         .map((image, index) => [index, image] as const)
         .filter(([, image]) => active.has(image.imageId)),
     );
-  }, [images, preparedImages]);
+  }, [imageIds, preparedImages]);
   const sheets = useMemo(
     () =>
       pages.map((page, index) => (

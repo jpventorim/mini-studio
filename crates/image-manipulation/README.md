@@ -143,6 +143,12 @@ time. Trimming and resizing run once per source. Each iterator item is a
 `Result<PreparedImage, Error>`; `copy_number` records the printed number.
 Calling `prepare` directly with numbering enabled produces number 1.
 
+For an interactive workflow, retain an unnumbered `PreparedImage` and call
+`template.numbered_copy(number)` for each new copy. It clones the prepared
+pixels and draws only the number, keeping trimming, resizing, mirroring, and
+borders intact. The template stays unchanged; passing zero or an already
+numbered template returns an error.
+
 Numbers use bundled **Atkinson Hyperlegible Bold**, black on white, centered in
 the numbered section of each tab. The font was designed for readers with low vision
 ([Braille Institute](https://www.brailleinstitute.org/about-us/news/braille-institute-launches-enhanced-atkinson-hyperlegible-font-to-make-reading-easier/)).

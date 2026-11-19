@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::HashMap,
     io::{Cursor, Write},
     path::{Path, PathBuf},
@@ -6,7 +7,8 @@ use std::{
 };
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use image::{DynamicImage, ImageDecoder, ImageEncoder, ImageFormat, ImageReader, Limits};
 use image_manipulation::{ManipulationOptions, Position, PreparedImage, TrimMode, TrimOptions};
 use image_packing::{DocumentLayout, ImageItem, LayoutOptions, PageSize};
 use serde::{Deserialize, Serialize};
@@ -20,6 +22,7 @@ pub(crate) struct PrintState(Arc<Mutex<Workspace>>);
 struct Workspace {
     next_id: u32,
     images: HashMap<u32, Arc<DynamicImage>>,
+    prepared: HashMap<u32, Arc<Mutex<Option<CachedPreparation>>>>,
     preview: Option<(PrintRequest, Arc<PreparedDocument>)>,
 }
 
@@ -27,8 +30,39 @@ struct PreparedSource {
     image_id: u32,
     copy_index: usize,
     quantity: usize,
-    image: PreparedImage,
-    preview: String,
+    image: Arc<PreparedImage>,
+    preview: Arc<str>,
+}
+
+#[derive(Clone)]
+struct CachedCopy {
+    image: Arc<PreparedImage>,
+    preview: Arc<str>,
+}
+
+struct CachedPreparation {
+    options: ManipulationOptions,
+    template: Arc<PreparedImage>,
+    plain: Option<CachedCopy>,
+    numbered: Vec<CachedCopy>,
+}
+
+impl CachedPreparation {
+    fn matches(&self, options: &ManipulationOptions) -> bool {
+        let mut previous = self.options.clone();
+        previous.max_height_mm = options.max_height_mm;
+        if previous != *options {
+            return false;
+        }
+        if self.options.max_height_mm == options.max_height_mm {
+            return true;
+        }
+        // A paper/margin edit needs no image work when the panel was not
+        // shortened and the complete strip still fits the new height limit.
+        let panel = self.template.base_bounds.y - self.template.fold_y;
+        let preferred = (f64::from(self.template.base_bounds.width) * 1.5).floor() as u32;
+        panel == preferred && self.template.height_mm <= options.max_height_mm
+    }
 }
 
 struct PreparedDocument {
@@ -183,6 +217,7 @@ pub(crate) async fn import_images(
 pub(crate) fn remove_image(state: State<'_, PrintState>, id: u32) -> Result<(), PrintError> {
     let mut workspace = state.workspace()?;
     workspace.images.remove(&id);
+    workspace.prepared.remove(&id);
     workspace.preview = None;
     Ok(())
 }
@@ -264,7 +299,31 @@ fn sources(
         .collect()
 }
 
+fn encode_preview(image: &image::RgbaImage) -> Result<Arc<str>, PrintError> {
+    let thumbnail = if image.width() <= 480 && image.height() <= 960 {
+        Cow::Borrowed(image)
+    } else {
+        let scale = (480.0 / f64::from(image.width())).min(960.0 / f64::from(image.height()));
+        let width = (f64::from(image.width()) * scale).round().max(1.0) as u32;
+        let height = (f64::from(image.height()) * scale).round().max(1.0) as u32;
+        Cow::Owned(image::imageops::thumbnail(image, width, height))
+    };
+    let mut bytes = Vec::new();
+    // The fixed filter avoids trying every PNG filter for every scanline.
+    // PNG remains lossless; only compressed size changes.
+    PngEncoder::new_with_quality(&mut bytes, CompressionType::Fast, FilterType::Sub)
+        .write_image(
+            thumbnail.as_raw(),
+            thumbnail.width(),
+            thumbnail.height(),
+            image::ExtendedColorType::Rgba8,
+        )
+        .map_err(|error| PrintError::new(error.to_string()))?;
+    Ok(format!("data:image/png;base64,{}", STANDARD.encode(bytes)).into())
+}
+
 fn prepare_sources(
+    state: &PrintState,
     request: &PrintRequest,
     sources: &[Arc<DynamicImage>],
 ) -> Result<Vec<PreparedSource>, PrintError> {
@@ -282,7 +341,7 @@ fn prepare_sources(
             grid_size_mm: request.grid_size_mm,
             dpi: request.dpi,
             position: Position::Grounded,
-            number_copies: item.number_copies,
+            number_copies: false,
             border_px: item.border_px,
             artwork_width_ratio: item.artwork_width_ratio,
             // Rotation can use either printable dimension as the strip height.
@@ -309,31 +368,97 @@ fn prepare_sources(
             });
         }
         let count = if item.number_copies { item.quantity } else { 1 };
-        let copies = image_manipulation::prepare_copies(source.as_ref(), count, &options)
-            .map_err(source_error)?;
-        for (copy_index, copy) in copies.enumerate() {
-            let image = copy.map_err(source_error)?;
-            total_pixels += u64::from(image.image.width()) * u64::from(image.image.height());
-            if total_pixels > 64 * 1024 * 1024 {
+        let shared = {
+            let mut workspace = state.workspace()?;
+            if !workspace
+                .images
+                .get(&item.id)
+                .is_some_and(|current| Arc::ptr_eq(current, source))
+            {
                 return Err(PrintError {
-                    message: "These standees need too much memory. Reduce copies or DPI.".into(),
+                    message: "This image is no longer available.".into(),
                     image_id: Some(item.id),
                 });
             }
-            let mut bytes = Cursor::new(Vec::new());
-            DynamicImage::ImageRgba8(image::imageops::thumbnail(&image.image, 480, 960))
-                .write_to(&mut bytes, ImageFormat::Png)
-                .map_err(|error| PrintError::new(error.to_string()))?;
-            prepared.push(PreparedSource {
-                image_id: item.id,
-                copy_index,
-                quantity: if item.number_copies { 1 } else { item.quantity },
-                image,
-                preview: format!(
-                    "data:image/png;base64,{}",
-                    STANDARD.encode(bytes.into_inner())
-                ),
+            Arc::clone(workspace.prepared.entry(item.id).or_default())
+        };
+        let mut slot = shared
+            .lock()
+            .map_err(|_| PrintError::new("Prepared images could not be accessed."))?;
+        if slot.as_ref().is_none_or(|cache| !cache.matches(&options)) {
+            let template =
+                image_manipulation::prepare(source.as_ref(), &options).map_err(source_error)?;
+            *slot = Some(CachedPreparation {
+                options,
+                template: Arc::new(template),
+                plain: None,
+                numbered: Vec::new(),
             });
+        }
+        let cache = slot
+            .as_mut()
+            .ok_or_else(|| PrintError::new("Image preparation did not finish."))?;
+        let pixels =
+            u64::from(cache.template.image.width()) * u64::from(cache.template.image.height());
+        // Include the blank template for numbered sources. Pixel buffers are
+        // shared with layouts; keep only the copies requested by this edit.
+        let buffers = if item.number_copies {
+            count as u64 + 1
+        } else {
+            1
+        };
+        total_pixels = total_pixels
+            .checked_add(
+                pixels
+                    .checked_mul(buffers)
+                    .ok_or_else(|| PrintError::new("Too many image pixels."))?,
+            )
+            .ok_or_else(|| PrintError::new("Too many image pixels."))?;
+        if total_pixels > 64 * 1024 * 1024 {
+            return Err(PrintError {
+                message: "These standees need too much memory. Reduce copies or DPI.".into(),
+                image_id: Some(item.id),
+            });
+        }
+        if item.number_copies {
+            cache.numbered.truncate(count);
+            while cache.numbered.len() < count {
+                let image = cache
+                    .template
+                    .numbered_copy(cache.numbered.len() + 1)
+                    .map_err(source_error)?;
+                let preview = encode_preview(&image.image)?;
+                cache.numbered.push(CachedCopy {
+                    image: Arc::new(image),
+                    preview,
+                });
+            }
+            for (copy_index, copy) in cache.numbered.iter().enumerate() {
+                prepared.push(PreparedSource {
+                    image_id: item.id,
+                    copy_index,
+                    quantity: 1,
+                    image: Arc::clone(&copy.image),
+                    preview: Arc::clone(&copy.preview),
+                });
+            }
+        } else {
+            cache.numbered.clear();
+            if cache.plain.is_none() {
+                cache.plain = Some(CachedCopy {
+                    image: Arc::clone(&cache.template),
+                    preview: encode_preview(&cache.template.image)?,
+                });
+            }
+            if let Some(copy) = &cache.plain {
+                prepared.push(PreparedSource {
+                    image_id: item.id,
+                    copy_index: 0,
+                    quantity: item.quantity,
+                    image: Arc::clone(&copy.image),
+                    preview: Arc::clone(&copy.preview),
+                });
+            }
         }
     }
     Ok(prepared)
@@ -367,7 +492,15 @@ fn prepared_document(
         return Ok(Arc::clone(document));
     }
     // Prepare first, then pass only pixels and print dimensions to packing.
-    let sources = prepare_sources(request, &sources(state, request)?)?;
+    let originals = sources(state, request)?;
+    let sources = match prepare_sources(state, request, &originals) {
+        Ok(sources) => sources,
+        Err(error) => {
+            // Do not retain partially grown caches after a failed request.
+            state.workspace()?.prepared.clear();
+            return Err(error);
+        }
+    };
     let layout = image_packing::layout(&items(&sources), &request.options())?;
     Ok(Arc::new(PreparedDocument { sources, layout }))
 }
@@ -422,7 +555,18 @@ pub(crate) async fn preview_layout(
     blocking(move || {
         let document = prepared_document(&state, &request)?;
         let preview = document_preview(&document);
-        state.workspace()?.preview = Some((request, document));
+        let mut workspace = state.workspace()?;
+        if let Some(item) = request
+            .items
+            .iter()
+            .find(|item| !workspace.images.contains_key(&item.id))
+        {
+            return Err(PrintError {
+                message: "This image is no longer available.".into(),
+                image_id: Some(item.id),
+            });
+        }
+        workspace.preview = Some((request, document));
         Ok(preview)
     })
     .await
@@ -458,7 +602,7 @@ fn document_preview(document: &PreparedDocument) -> PreparedPreview {
         .iter()
         .map(|source| PreviewImage {
             image_id: source.image_id,
-            preview: source.preview.clone(),
+            preview: source.preview.to_string(),
             width_mm: source.image.width_mm,
             height_mm: source.image.height_mm,
             copy_number: source.image.copy_number,
@@ -563,6 +707,20 @@ mod tests {
         ))
     }
 
+    fn prepare_test_sources(
+        request: &PrintRequest,
+        sources: &[Arc<DynamicImage>],
+    ) -> Result<Vec<PreparedSource>, PrintError> {
+        let state = PrintState::default();
+        for (item, source) in request.items.iter().zip(sources) {
+            state
+                .workspace()?
+                .images
+                .insert(item.id, Arc::clone(source));
+        }
+        prepare_sources(&state, request, sources)
+    }
+
     #[test]
     fn imported_image_is_prepared_then_packed_and_saved_without_touching_the_source() {
         let folder = tempfile::tempdir().unwrap();
@@ -616,7 +774,7 @@ mod tests {
     fn numbered_sources_restart_and_every_copy_reaches_packing() {
         let request = make_request(vec![item(10, 4, true), item(20, 3, true)]);
         let sources = vec![Arc::new(source()), Arc::new(source())];
-        let prepared = prepare_sources(&request, &sources).unwrap();
+        let prepared = prepare_test_sources(&request, &sources).unwrap();
         assert_eq!(
             prepared
                 .iter()
@@ -715,6 +873,194 @@ mod tests {
     }
 
     #[test]
+    fn layout_edits_and_unnumbered_quantities_reuse_pixels_and_previews() {
+        let state = PrintState::default();
+        for id in [10, 20] {
+            state
+                .workspace()
+                .unwrap()
+                .images
+                .insert(id, Arc::new(source()));
+        }
+        let mut request = make_request(vec![item(10, 2, false), item(20, 1, false)]);
+        let first = prepared_document(&state, &request).unwrap();
+        request.spacing_mm = 0.5;
+        request.items[0].quantity = 3;
+        let edited = prepared_document(&state, &request).unwrap();
+        for i in 0..2 {
+            assert!(Arc::ptr_eq(
+                &first.sources[i].image,
+                &edited.sources[i].image
+            ));
+            assert!(Arc::ptr_eq(
+                &first.sources[i].preview,
+                &edited.sources[i].preview
+            ));
+        }
+        assert_eq!(edited.sources[0].quantity, 3);
+        request.height_mm = 420.0;
+        let taller_paper = prepared_document(&state, &request).unwrap();
+        assert!(Arc::ptr_eq(
+            &first.sources[0].image,
+            &taller_paper.sources[0].image
+        ));
+        request.items[0].size = 2.0;
+        let resized = prepared_document(&state, &request).unwrap();
+        assert!(!Arc::ptr_eq(
+            &first.sources[0].image,
+            &resized.sources[0].image
+        ));
+        assert!(Arc::ptr_eq(
+            &first.sources[1].image,
+            &resized.sources[1].image
+        ));
+    }
+
+    #[test]
+    fn paper_height_changes_rebuild_capped_geometry_without_shrinking_the_base() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let mut request = make_request(vec![item(10, 1, false)]);
+        request.items[0].size = 3.0;
+        let capped = prepared_document(&state, &request).unwrap();
+        request.height_mm = 420.0;
+        let taller = prepared_document(&state, &request).unwrap();
+        assert!(!Arc::ptr_eq(
+            &capped.sources[0].image,
+            &taller.sources[0].image
+        ));
+        assert!(taller.sources[0].image.height_mm > capped.sources[0].image.height_mm);
+        request.height_mm = 297.0;
+        let capped_again = prepared_document(&state, &request).unwrap();
+        assert!(!Arc::ptr_eq(
+            &taller.sources[0].image,
+            &capped_again.sources[0].image
+        ));
+        assert_eq!(
+            capped_again.sources[0].image.height_mm,
+            capped.sources[0].image.height_mm
+        );
+        assert_eq!(
+            capped.sources[0].image.base_bounds.width,
+            taller.sources[0].image.base_bounds.width
+        );
+        assert_eq!(
+            capped.sources[0].image.base_bounds.height,
+            taller.sources[0].image.base_bounds.height
+        );
+    }
+
+    #[test]
+    fn numbered_quantity_edits_reuse_existing_copies_and_release_unused_copies() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let mut request = make_request(vec![item(10, 3, true)]);
+        let first = prepared_document(&state, &request).unwrap();
+        let shared = Arc::clone(state.workspace().unwrap().prepared.get(&10).unwrap());
+        let template = Arc::clone(&shared.lock().unwrap().as_ref().unwrap().template);
+        request.items[0].quantity = 4;
+        let four = prepared_document(&state, &request).unwrap();
+        for i in 0..3 {
+            assert!(Arc::ptr_eq(&first.sources[i].image, &four.sources[i].image));
+            assert!(Arc::ptr_eq(
+                &first.sources[i].preview,
+                &four.sources[i].preview
+            ));
+        }
+        assert_eq!(four.sources[3].image.copy_number, Some(4));
+        assert!(Arc::ptr_eq(
+            &template,
+            &shared.lock().unwrap().as_ref().unwrap().template
+        ));
+        let discarded = Arc::downgrade(&four.sources[3].image);
+        request.items[0].quantity = 2;
+        let two = prepared_document(&state, &request).unwrap();
+        assert_eq!(shared.lock().unwrap().as_ref().unwrap().numbered.len(), 2);
+        assert!(Arc::ptr_eq(&first.sources[0].image, &two.sources[0].image));
+        drop(four);
+        assert!(discarded.upgrade().is_none());
+        request.items[0].number_copies = false;
+        let plain = prepared_document(&state, &request).unwrap();
+        assert!(Arc::ptr_eq(&template, &plain.sources[0].image));
+        assert!(shared.lock().unwrap().as_ref().unwrap().numbered.is_empty());
+        request.items[0].number_copies = true;
+        let numbered_again = prepared_document(&state, &request).unwrap();
+        assert_eq!(numbered_again.sources[1].image.copy_number, Some(2));
+        assert!(Arc::ptr_eq(
+            &template,
+            &shared.lock().unwrap().as_ref().unwrap().template
+        ));
+    }
+
+    #[test]
+    fn preview_png_preserves_thumbnail_pixels_and_transparency() {
+        let image = image::RgbaImage::from_fn(20, 40, |x, y| {
+            image::Rgba([
+                (x * 10) as u8,
+                (y * 5) as u8,
+                150,
+                if x < 10 { 0 } else { 128 },
+            ])
+        });
+        let encoded = encode_preview(&image).unwrap();
+        let bytes = STANDARD
+            .decode(encoded.strip_prefix("data:image/png;base64,").unwrap())
+            .unwrap();
+        let decoded = image::load_from_memory(&bytes).unwrap().to_rgba8();
+        assert_eq!(
+            decoded, image,
+            "small previews should not be upscaled or altered"
+        );
+        let large = image::RgbaImage::from_pixel(300, 1500, image::Rgba([30, 90, 150, 128]));
+        let encoded = encode_preview(&large).unwrap();
+        let bytes = STANDARD
+            .decode(encoded.strip_prefix("data:image/png;base64,").unwrap())
+            .unwrap();
+        let decoded = image::load_from_memory(&bytes).unwrap().to_rgba8();
+        assert_eq!(decoded.dimensions(), (192, 960));
+        assert_eq!(decoded, image::imageops::thumbnail(&large, 192, 960));
+    }
+
+    #[test]
+    fn failed_preparation_does_not_retain_partially_grown_caches() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let mut request = make_request(vec![item(10, 1, true)]);
+        prepared_document(&state, &request).unwrap();
+        assert!(!state.workspace().unwrap().prepared.is_empty());
+        request.items[0].quantity = 5000;
+        assert!(prepared_document(&state, &request).is_err());
+        assert!(state.workspace().unwrap().prepared.is_empty());
+    }
+
+    #[test]
+    fn removed_sources_cannot_repopulate_preparation_caches() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let request = make_request(vec![item(10, 1, false)]);
+        let originals = sources(&state, &request).unwrap();
+        state.workspace().unwrap().images.remove(&10);
+        assert!(prepare_sources(&state, &request, &originals).is_err());
+        assert!(state.workspace().unwrap().prepared.is_empty());
+    }
+
+    #[test]
     fn application_always_allows_rotation_to_fit_the_paper() {
         let state = PrintState::default();
         state
@@ -740,12 +1086,12 @@ mod tests {
         for size in [0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0] {
             let mut request = make_request(vec![item(10, 1, false)]);
             request.items[0].size = size;
-            assert!(prepare_sources(&request, &sources).is_ok());
+            assert!(prepare_test_sources(&request, &sources).is_ok());
         }
         for size in [0.0, 0.25, 1.5, 4.5, 6.0] {
             let mut request = make_request(vec![item(10, 1, false)]);
             request.items[0].size = size;
-            let error = prepare_sources(&request, &sources).err().unwrap();
+            let error = prepare_test_sources(&request, &sources).err().unwrap();
             assert_eq!(error.image_id, Some(10));
         }
     }
@@ -755,22 +1101,22 @@ mod tests {
         let mut request = make_request(vec![item(10, 1, false)]);
         request.items[0].size = 3.0;
         let sources = vec![Arc::new(source())];
-        let capped = prepare_sources(&request, &sources).unwrap();
+        let capped = prepare_test_sources(&request, &sources).unwrap();
         assert!(capped[0].image.height_mm <= 293.0);
         assert!(capped[0].image.width_mm > 73.0);
         request.height_mm = 8.0;
         request.width_mm = 8.0;
-        let error = prepare_sources(&request, &sources).err().unwrap();
+        let error = prepare_test_sources(&request, &sources).err().unwrap();
         assert_eq!(error.image_id, Some(10));
         request.items[0].size = 3.0;
         request.width_mm = 420.0;
         request.height_mm = 594.0;
-        assert!(prepare_sources(&request, &sources).is_ok());
+        assert!(prepare_test_sources(&request, &sources).is_ok());
         request.items[0].size = 1.0;
         request.items[0].border_px = u32::MAX;
-        assert!(prepare_sources(&request, &sources).is_err());
+        assert!(prepare_test_sources(&request, &sources).is_err());
         request.items[0].border_px = 3;
         request.items[0].quantity = 0;
-        assert!(prepare_sources(&request, &sources).is_err());
+        assert!(prepare_test_sources(&request, &sources).is_err());
     }
 }

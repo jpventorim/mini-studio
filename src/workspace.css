@@ -297,10 +297,7 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   .page-artwork[data-animate="true"] .page-placement {
     animation: placement-appear 160ms var(--rf-ease) both;
-    transition:
-      transform 180ms var(--rf-ease),
-      width 180ms var(--rf-ease),
-      height 180ms var(--rf-ease);
+    transition: transform 180ms var(--rf-ease);
   }
 
   .page-artwork[data-animate="true"] .page-placement img {

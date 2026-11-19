@@ -172,6 +172,35 @@ fn numbering_is_optional_and_single_image_preparation_starts_at_one() {
 }
 
 #[test]
+fn numbered_copies_reuse_an_unnumbered_template_without_changing_it() {
+    let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
+    let options = ManipulationOptions {
+        border_px: 3,
+        ..Default::default()
+    };
+    let template = prepare(&source, &options).unwrap();
+    let original = template.image.clone();
+    let first = template.numbered_copy(1).unwrap();
+    let second = template.numbered_copy(2).unwrap();
+    assert_eq!(template.image, original);
+    assert_eq!(template.copy_number, None);
+    assert_eq!(first.copy_number, Some(1));
+    assert_eq!(second.copy_number, Some(2));
+    assert_ne!(first.image, second.image);
+    let expected = prepare(
+        &source,
+        &ManipulationOptions {
+            number_copies: true,
+            ..options
+        },
+    )
+    .unwrap();
+    assert_eq!(first.image, expected.image);
+    assert!(template.numbered_copy(0).is_err());
+    assert!(first.numbered_copy(2).is_err());
+}
+
+#[test]
 fn quarter_size_numbered_copies_fit_their_sections_on_both_grids() {
     let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
     for grid_size_mm in [20.0, 25.0] {

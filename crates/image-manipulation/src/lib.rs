@@ -153,6 +153,29 @@ pub struct PreparedImage {
     pub fold_y: u32,
 }
 
+impl PreparedImage {
+    /// Clone an unnumbered standee and draw a positive copy number on its tabs.
+    ///
+    /// Reuses the prepared geometry and pixels without trimming, resizing,
+    /// mirroring, or rebuilding borders. The original image stays unchanged.
+    ///
+    /// # Errors
+    /// Rejects zero, already numbered templates, and labels that cannot fit.
+    pub fn numbered_copy(&self, number: usize) -> Result<Self, Error> {
+        if number == 0 {
+            return Err(Error::InvalidInput("copy number must be positive"));
+        }
+        if self.copy_number.is_some() {
+            return Err(Error::InvalidInput(
+                "use an unnumbered template to generate numbered copies",
+            ));
+        }
+        let mut copy = self.clone();
+        numbering::draw(&mut copy, number)?;
+        Ok(copy)
+    }
+}
+
 /// Validation, memory allocation, or empty-image failures.
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -482,13 +505,11 @@ impl Iterator for PreparedCopies {
             return None;
         }
         self.next += 1;
-        let mut copy = self.source.clone();
-        if self.numbered
-            && let Err(error) = numbering::draw(&mut copy, self.next)
-        {
-            return Some(Err(error));
-        }
-        Some(Ok(copy))
+        Some(if self.numbered {
+            self.source.numbered_copy(self.next)
+        } else {
+            Ok(self.source.clone())
+        })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
