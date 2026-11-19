@@ -22,7 +22,7 @@ export function isPaperSize(value: unknown): value is SheetSettings["paper"] {
 export const defaultSettings: SheetSettings = {
   paper: "a4",
   dpi: 300,
-  marginMm: 2,
+  marginMm: 0,
   spacingMm: 0,
   gridSizeMm: 25,
 };
@@ -57,13 +57,9 @@ export type PrintImage = ImportedImage & {
   size: StandeeSize;
   numberCopies: boolean;
   borderPx: number;
-  baseClearanceMm: number | null;
   artworkWidthRatio: number;
   trim: "auto" | "alpha" | "color" | "none";
   backgroundColor: string;
-  alphaThreshold: number;
-  colorTolerance: number;
-  allowRotation: boolean;
 };
 
 export const defaultImageSettings = {
@@ -71,13 +67,9 @@ export const defaultImageSettings = {
   size: 1,
   numberCopies: false,
   borderPx: 3,
-  baseClearanceMm: null,
   artworkWidthRatio: 0.9,
   trim: "auto",
   backgroundColor: "#ffffff",
-  alphaThreshold: 0,
-  colorTolerance: 8,
-  allowRotation: true,
 } satisfies Omit<PrintImage, keyof ImportedImage>;
 
 export type PreparedPreviewImage = {
@@ -137,18 +129,14 @@ export function printRequest(images: PrintImage[], settings: SheetSettings) {
       return {
         id: image.id,
         quantity: image.quantity,
-        allowRotation: image.allowRotation,
         size: image.size,
         numberCopies: image.numberCopies,
         borderPx: image.borderPx,
-        baseClearanceMm: image.baseClearanceMm,
         artworkWidthRatio: image.artworkWidthRatio,
         trim: image.trim,
         backgroundColor: [1, 3, 5].map((offset) =>
           Number.parseInt(image.backgroundColor.slice(offset, offset + 2), 16),
         ),
-        alphaThreshold: image.alphaThreshold,
-        colorTolerance: image.colorTolerance,
       };
     }),
   };

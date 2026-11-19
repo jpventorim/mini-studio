@@ -27,7 +27,6 @@ struct PreparedSource {
     image_id: u32,
     copy_index: usize,
     quantity: usize,
-    allow_rotation: bool,
     image: PreparedImage,
     preview: String,
 }
@@ -210,7 +209,7 @@ impl PrintRequest {
             dpi: self.dpi,
             margin_mm: self.margin_mm,
             spacing_mm: self.spacing_mm,
-            ..LayoutOptions::default()
+            allow_rotation: true,
         }
     }
 }
@@ -220,16 +219,12 @@ impl PrintRequest {
 struct PrintItem {
     id: u32,
     quantity: usize,
-    allow_rotation: bool,
     size: f64,
     number_copies: bool,
     border_px: u32,
-    base_clearance_mm: Option<f64>,
     artwork_width_ratio: f64,
     trim: Background,
     background_color: [u8; 3],
-    alpha_threshold: u8,
-    color_tolerance: u8,
 }
 
 #[derive(Clone, Copy, Deserialize, PartialEq)]
@@ -289,14 +284,9 @@ fn prepare_sources(
             position: Position::Grounded,
             number_copies: item.number_copies,
             border_px: item.border_px,
-            base_clearance_mm: item.base_clearance_mm,
             artwork_width_ratio: item.artwork_width_ratio,
             // Rotation can use either printable dimension as the strip height.
-            max_height_mm: (if item.allow_rotation {
-                request.width_mm.max(request.height_mm)
-            } else {
-                request.height_mm
-            }) - 2.0 * request.margin_mm,
+            max_height_mm: request.width_mm.max(request.height_mm) - 2.0 * request.margin_mm,
             trim: TrimOptions {
                 mode: match item.trim {
                     Background::Auto => TrimMode::Auto,
@@ -304,8 +294,7 @@ fn prepare_sources(
                     Background::Color => TrimMode::Color(item.background_color),
                     Background::None => TrimMode::None,
                 },
-                alpha_threshold: item.alpha_threshold,
-                color_tolerance: item.color_tolerance,
+                ..TrimOptions::default()
             },
             ..ManipulationOptions::default()
         };
@@ -339,7 +328,6 @@ fn prepare_sources(
                 image_id: item.id,
                 copy_index,
                 quantity: if item.number_copies { 1 } else { item.quantity },
-                allow_rotation: item.allow_rotation,
                 image,
                 preview: format!(
                     "data:image/png;base64,{}",
@@ -361,7 +349,7 @@ fn items(sources: &[PreparedSource]) -> Vec<ImageItem<'_, image::RgbaImage>> {
                 source.quantity,
             )
             .with_width_mm(source.image.width_mm)
-            .with_rotation(source.allow_rotation)
+            .with_rotation(true)
         })
         .collect()
 }
@@ -546,16 +534,12 @@ mod tests {
         PrintItem {
             id,
             quantity,
-            allow_rotation: true,
             size: 1.0,
             number_copies: numbered,
             border_px: 3,
-            base_clearance_mm: None,
             artwork_width_ratio: 0.9,
             trim: Background::Auto,
             background_color: [255; 3],
-            alpha_threshold: 0,
-            color_tolerance: 8,
         }
     }
 
@@ -731,6 +715,26 @@ mod tests {
     }
 
     #[test]
+    fn application_always_allows_rotation_to_fit_the_paper() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let mut request = make_request(vec![item(10, 1, false)]);
+        request.width_mm = 130.0;
+        request.height_mm = 40.0;
+        let document = prepared_document(&state, &request).unwrap();
+        let placement = &document.layout.pages()[0].placements[0];
+        assert!(
+            placement.rotated,
+            "the standee can fit this paper only after a quarter-turn"
+        );
+        assert_eq!(document.layout.pages().len(), 1);
+    }
+
+    #[test]
     fn application_accepts_only_the_supported_size_categories() {
         let sources = vec![Arc::new(source())];
         for size in [0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0] {
@@ -755,11 +759,10 @@ mod tests {
         assert!(capped[0].image.height_mm <= 293.0);
         assert!(capped[0].image.width_mm > 73.0);
         request.height_mm = 8.0;
-        request.items[0].allow_rotation = false;
+        request.width_mm = 8.0;
         let error = prepare_sources(&request, &sources).err().unwrap();
         assert_eq!(error.image_id, Some(10));
         request.items[0].size = 3.0;
-        request.items[0].allow_rotation = true;
         request.width_mm = 420.0;
         request.height_mm = 594.0;
         assert!(prepare_sources(&request, &sources).is_ok());

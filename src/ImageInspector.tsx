@@ -33,8 +33,7 @@ export function ImageInspector({
   remove: () => void;
 }) {
   const automaticClearance = image.size < 1 ? 1 : 2;
-  const baseWidth =
-    image.size * gridSizeMm - (image.baseClearanceMm ?? automaticClearance);
+  const baseWidth = image.size * gridSizeMm - automaticClearance;
   return (
     <section className="inspector" aria-labelledby="image-settings-heading">
       <div className="inspector-heading">
@@ -97,7 +96,7 @@ export function ImageInspector({
           }
         />
         <Checkbox
-          label="Number copies"
+          label="Numbered bases"
           markAlignment="start"
           checked={image.numberCopies}
           onCheckedChange={(numberCopies) => update({ numberCopies })}
@@ -137,27 +136,6 @@ export function ImageInspector({
                     update({ artworkWidthRatio: value / 100 })
                   }
                 />
-                <Checkbox
-                  label="Automatic base clearance"
-                  markAlignment="start"
-                  checked={image.baseClearanceMm === null}
-                  onCheckedChange={(automatic) =>
-                    update({
-                      baseClearanceMm: automatic ? null : automaticClearance,
-                    })
-                  }
-                />
-                {image.baseClearanceMm !== null && (
-                  <NumberField
-                    label="Total base clearance"
-                    unit="mm"
-                    value={image.baseClearanceMm}
-                    min={0}
-                    max={100}
-                    keyboardStep={0.5}
-                    onChange={(baseClearanceMm) => update({ baseClearanceMm })}
-                  />
-                )}
                 <Select
                   label="Trim background"
                   value={image.trim}
@@ -189,38 +167,6 @@ export function ImageInspector({
                     />
                   </label>
                 )}
-                {image.trim !== "none" && (
-                  <>
-                    <NumberField
-                      label="Alpha threshold"
-                      value={image.alphaThreshold}
-                      min={0}
-                      max={255}
-                      integer
-                      keyboardStep={1}
-                      onChange={(alphaThreshold) => update({ alphaThreshold })}
-                    />
-                    {image.trim !== "alpha" && (
-                      <NumberField
-                        label="Color tolerance"
-                        value={image.colorTolerance}
-                        min={0}
-                        max={255}
-                        integer
-                        keyboardStep={1}
-                        onChange={(colorTolerance) =>
-                          update({ colorTolerance })
-                        }
-                      />
-                    )}
-                  </>
-                )}
-                <Checkbox
-                  label="Allow 90° rotation"
-                  markAlignment="start"
-                  checked={image.allowRotation}
-                  onCheckedChange={(allowRotation) => update({ allowRotation })}
-                />
                 <p className="asset-pixels">
                   The base is rectangular. Standee height must fit the selected
                   paper after margins. Artwork keeps at least 1 mm of cutting

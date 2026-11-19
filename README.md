@@ -13,12 +13,15 @@ each image's quantity and grid multiplier. Allowed sizes are 0.5, 0.75, 1, 2, 3,
 4, and 5. Arrow keys move between these values; other typed sizes are rejected.
 Artwork is grounded; the position control is hidden for now. Inputs are trimmed and
 prepared as mirrored standees before packing. Each strip has rectangular base tabs,
-fold lines, and a 3 px black outline by default. Enable **Number copies** to
+fold lines, and a 3 px black outline by default. Enable **Numbered bases** to
 start a separate sequence at 1 for each image. The live preview repacks the sheets as you
 edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
 bottom-right adjust zoom and fit the sheets. **Advanced** expands to show
-border thickness, base clearance, artwork width, background trimming, and a
-90° rotation toggle. Rotation is enabled when an image is added.
+border thickness, artwork width, and background trimming. A color picker
+appears for solid-color backgrounds. Packing always allows 90° rotation.
+Base clearance is automatic: 0.5 mm per edge below size 1, and 1 mm per edge
+from size 1 upward. Trimming uses the library's default alpha threshold and
+color tolerance; these controls remain available in the independent crate.
 
 | Grid multiplier | Creature size |
 |---|---|
@@ -33,7 +36,7 @@ border thickness, base clearance, artwork width, background trimming, and a
 The app excludes size 0.25 because it is too small for practical printing.
 The independent manipulation library still accepts custom positive multipliers.
 
-The workspace starts with A4 portrait, 300 DPI, a 25 mm grid, 2 mm margins, and
+The workspace starts with A4 portrait, 300 DPI, a 25 mm grid, zero margins, and
 zero spacing. A2, A3, and Letter are also available. **Print settings** offers
 25 mm (default) or 20 mm grids and adjusts DPI, margins, and spacing.
 Margin and spacing arrow keys step by 0.5 mm.
