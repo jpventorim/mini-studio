@@ -37,8 +37,17 @@ export type ImportedImage = {
 
 export type ImageSize = { width: number; height: number };
 
-export const standeeSizes = [0.25, 0.5, 1, 2, 3, 4, 5] as const;
+export const standeeSizes = [0.5, 0.75, 1, 2, 3, 4, 5] as const;
 export type StandeeSize = (typeof standeeSizes)[number];
+export const standeeSizeLabels = {
+  0.5: "Tiny",
+  0.75: "Small",
+  1: "Medium",
+  2: "Large",
+  3: "Huge",
+  4: "Gargantuan",
+  5: "Colossal",
+} satisfies Record<StandeeSize, string>;
 export function isStandeeSize(value: number): value is StandeeSize {
   return standeeSizes.some((size) => size === value);
 }
@@ -79,6 +88,7 @@ export type PreparedPreviewImage = {
   copyNumber: number | null;
   baseWidthMm: number;
   baseDepthMm: number;
+  foldedHeightMm: number;
 };
 
 export type PreparedLayout = {

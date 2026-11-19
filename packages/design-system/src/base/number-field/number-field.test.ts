@@ -6,20 +6,20 @@ componentTests("base-numberfield", {
     page,
   ) => {
     const size = page.getByRole("textbox", { name: "Size", exact: true });
-    await size.fill("0.25");
-    for (const value of [0.5, 1, 2, 3, 4, 5, 5]) {
+    await size.fill("0.5");
+    for (const value of [0.75, 1, 2, 3, 4, 5, 5]) {
       await size.press("ArrowUp");
       expect(await size.inputValue()).toBe(String(value));
     }
-    for (const value of [4, 3, 2, 1, 0.5, 0.25, 0.25]) {
+    for (const value of [4, 3, 2, 1, 0.75, 0.5, 0.5]) {
       await size.press("ArrowDown");
       expect(await size.inputValue()).toBe(String(value));
     }
-    for (const value of ["0.75", "1.5", "6"]) {
+    for (const value of ["0.25", "1.5", "6"]) {
       await size.fill(value);
       expect(await size.getAttribute("aria-invalid")).toBe("true");
       await size.press("Enter");
-      expect(await size.inputValue()).toBe("0.25");
+      expect(await size.inputValue()).toBe("0.5");
     }
   },
   "steps a bounded quantity and preserves only valid input": async (page) => {

@@ -13,6 +13,7 @@ import {
   millimetres,
   type PreparedPreviewImage,
   type PrintImage,
+  standeeSizeLabels,
   standeeSizes,
 } from "./print-workspace";
 
@@ -68,9 +69,9 @@ export function ImageInspector({
         />
         <NumberField
           label="Size"
-          unit="× grid"
+          unit={`× grid · ${standeeSizeLabels[image.size]}`}
           value={image.size}
-          min={0.25}
+          min={0.5}
           max={5}
           allowedValues={standeeSizes}
           onChange={(size) => {
@@ -78,11 +79,21 @@ export function ImageInspector({
           }}
         />
         <Readout
-          label="Folded footprint"
+          label="Final base size"
           value={
             prepared
               ? `${millimetres.format(prepared.baseWidthMm)} × ${millimetres.format(prepared.baseDepthMm * (image.size >= 4 ? 2 : 1))} mm`
               : `${millimetres.format(baseWidth)} × ${millimetres.format(baseWidth)} mm`
+          }
+        />
+        <Readout
+          label="Final height (folded)"
+          value={
+            prepared
+              ? `${millimetres.format(prepared.foldedHeightMm)} mm`
+              : problem
+                ? "Unavailable"
+                : "Preparing…"
           }
         />
         <Checkbox
@@ -90,16 +101,6 @@ export function ImageInspector({
           markAlignment="start"
           checked={image.numberCopies}
           onCheckedChange={(numberCopies) => update({ numberCopies })}
-        />
-        <Readout
-          label="Standee print size"
-          value={
-            prepared
-              ? `${millimetres.format(prepared.widthMm)} × ${millimetres.format(prepared.heightMm)} mm`
-              : problem
-                ? "Unavailable"
-                : "Preparing…"
-          }
         />
         {problem && (
           <Notice tone="error" variant="inline" announce={false}>

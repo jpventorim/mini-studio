@@ -276,9 +276,9 @@ fn prepare_sources(
     let mut prepared = Vec::new();
     let mut total_pixels = 0_u64;
     for (item, source) in request.items.iter().zip(sources) {
-        if ![0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0].contains(&item.size) {
+        if ![0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0].contains(&item.size) {
             return Err(PrintError {
-                message: "Choose size 0.25, 0.5, 1, 2, 3, 4, or 5.".into(),
+                message: "Choose size 0.5, 0.75, 1, 2, 3, 4, or 5.".into(),
                 image_id: Some(item.id),
             });
         }
@@ -401,6 +401,7 @@ struct PreviewImage {
     copy_number: Option<usize>,
     base_width_mm: f64,
     base_depth_mm: f64,
+    folded_height_mm: f64,
 }
 
 #[derive(Serialize)]
@@ -475,6 +476,8 @@ fn document_preview(document: &PreparedDocument) -> PreparedPreview {
             copy_number: source.image.copy_number,
             base_width_mm: f64::from(source.image.base_bounds.width) * 25.4 / source.image.dpi,
             base_depth_mm: f64::from(source.image.base_bounds.height) * 25.4 / source.image.dpi,
+            folded_height_mm: f64::from(source.image.base_bounds.y - source.image.fold_y) * 25.4
+                / source.image.dpi,
         })
         .collect();
     PreparedPreview { pages, images }
@@ -592,6 +595,10 @@ mod tests {
         let prepared = &document.sources[0].image;
         assert_eq!(prepared.image.get_pixel(0, 0), &image::Rgba([0, 0, 0, 255]));
         assert!(prepared.height_mm > 91.0);
+        let preview = document_preview(&document);
+        let final_height = preview.images[0].folded_height_mm;
+        assert!((final_height - 34.5).abs() < 25.4 / prepared.dpi);
+        assert!(final_height < prepared.height_mm / 2.0);
         for y in 0..prepared.image.height() {
             for x in 0..prepared.image.width() {
                 assert_eq!(
@@ -685,7 +692,7 @@ mod tests {
     }
 
     #[test]
-    fn quarter_size_numbered_images_reach_preview_and_pdf_on_both_grids() {
+    fn small_creature_numbered_images_reach_preview_and_pdf_on_both_grids() {
         for grid_size_mm in [20.0, 25.0] {
             let state = PrintState::default();
             state
@@ -694,11 +701,11 @@ mod tests {
                 .images
                 .insert(10, Arc::new(source()));
             let mut request = make_request(vec![item(10, 12, true)]);
-            request.items[0].size = 0.25;
+            request.items[0].size = 0.75;
             request.grid_size_mm = grid_size_mm;
             request.dpi = 300.0;
             let document = prepared_document(&state, &request)
-                .expect("quarter-size numbered standees should prepare and pack");
+                .expect("small creature numbered standees should prepare and pack");
             let preview = document_preview(&document);
             assert_eq!(preview.images.len(), 12);
             assert_eq!(
@@ -726,12 +733,12 @@ mod tests {
     #[test]
     fn application_accepts_only_the_supported_size_categories() {
         let sources = vec![Arc::new(source())];
-        for size in [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0] {
+        for size in [0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0] {
             let mut request = make_request(vec![item(10, 1, false)]);
             request.items[0].size = size;
             assert!(prepare_sources(&request, &sources).is_ok());
         }
-        for size in [0.0, 0.75, 1.5, 4.5, 6.0] {
+        for size in [0.0, 0.25, 1.5, 4.5, 6.0] {
             let mut request = make_request(vec![item(10, 1, false)]);
             request.items[0].size = size;
             let error = prepare_sources(&request, &sources).err().unwrap();

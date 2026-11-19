@@ -540,7 +540,7 @@ fn size_four_and_up_keep_only_the_numbered_base_section() {
 fn folded_footprint_matches_the_grid_at_every_size_even_when_height_is_capped() {
     let source = RgbImage::from_pixel(20, 40, Rgb([80, 20, 150]));
     for grid_size_mm in [20.0, 25.0] {
-        for size in [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0] {
+        for size in [0.25, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0, 5.0] {
             for max_height_mm in [293.0, 1000.0] {
                 let output = prepare(
                     &source,

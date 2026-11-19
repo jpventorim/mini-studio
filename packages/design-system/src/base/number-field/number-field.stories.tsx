@@ -38,9 +38,9 @@ function Fields() {
         label="Size"
         unit="× grid"
         value={size}
-        min={0.25}
+        min={0.5}
         max={5}
-        allowedValues={[0.25, 0.5, 1, 2, 3, 4, 5]}
+        allowedValues={[0.5, 0.75, 1, 2, 3, 4, 5]}
         onChange={setSize}
       />
     </div>

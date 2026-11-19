@@ -9,7 +9,7 @@ users do not compile CLI dependencies unless they enable the `cli` feature.
 
 Run `bun run tauri dev` to open the print workspace. Add PNG or JPEG files with
 the clickable drop area or drag them into the window. Set the paper size and
-each image's quantity and grid multiplier. Allowed sizes are 0.25, 0.5, 1, 2, 3,
+each image's quantity and grid multiplier. Allowed sizes are 0.5, 0.75, 1, 2, 3,
 4, and 5. Arrow keys move between these values; other typed sizes are rejected.
 Artwork is grounded; the position control is hidden for now. Inputs are trimmed and
 prepared as mirrored standees before packing. Each strip has rectangular base tabs,
@@ -19,6 +19,19 @@ edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
 bottom-right adjust zoom and fit the sheets. **Advanced** expands to show
 border thickness, base clearance, artwork width, background trimming, and a
 90° rotation toggle. Rotation is enabled when an image is added.
+
+| Grid multiplier | Creature size |
+|---|---|
+| 0.5 | Tiny |
+| 0.75 | Small |
+| 1 | Medium |
+| 2 | Large |
+| 3 | Huge |
+| 4 | Gargantuan |
+| 5 | Colossal |
+
+The app excludes size 0.25 because it is too small for practical printing.
+The independent manipulation library still accepts custom positive multipliers.
 
 The workspace starts with A4 portrait, 300 DPI, a 25 mm grid, 2 mm margins, and
 zero spacing. A2, A3, and Letter are also available. **Print settings** offers
@@ -38,7 +51,9 @@ Base width takes priority: artwork panels shorten when the strip reaches that
 height limit. The two folded feet together span the grid footprint after
 clearance. Below size 4, the outer sections fold underneath; sizes 4 and 5 use
 one section per tab. Base dimensions stay fixed when height is capped, while
-artwork scales proportionally to fit. The editor shows the folded footprint.
+artwork scales proportionally to fit. The editor shows **Final base size** and
+**Final height (folded)**: the upright height with the feet folded outward,
+excluding base tabs and the outer border.
 
 The workspace also contains [`image-manipulation`](crates/image-manipulation/README.md)
 to trim and size an image into a vertically mirrored, foldable standee with
