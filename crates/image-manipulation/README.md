@@ -4,8 +4,8 @@ Create a foldable paper standee from an image with or without transparency.
 
 ## Processing pipeline
 
-The crate prepares one source image into a mirrored strip with fixed-height
-artwork panels and two square base tabs for printing, cutting, and folding. Physical dimensions use millimetres.
+The crate prepares one source image into a mirrored strip with height-limited
+artwork panels and two rectangular base tabs for printing, cutting, and folding. Physical dimensions use millimetres.
 Raster operations use whole pixels.
 
 1. **Load and normalize the source.** The development CLI decodes PNG or JPEG.
@@ -24,15 +24,16 @@ Raster operations use whole pixels.
    of the foreground, including interior pixels.
 5. **Calculate the artwork box.** Use at most `artwork_width_ratio` of the actual
    base width, defaulting to 90%. The artwork panel, including its insets and
-   center-fold stroke, has a fixed height of 1.5 times the actual base width.
+   center-fold stroke, prefers a height of 1.5 times the actual base width.
 6. **Reserve clean cutting space.** Keep at least 1 mm around the artwork,
    excluding fold lines. Convert this clearance using the effective pixel scale
    and round up, so pixel rounding preserves the physical minimum. The width
    limit can leave additional horizontal space.
-7. **Check the complete-strip height limit.** Include both fixed artwork panels
-   and both square base tabs in `max_height_mm`, which defaults to 297 mm. Return
-   `Error::HeightLimitExceeded` if the strip exceeds this limit. Fixed panel
-   dimensions round down to whole pixels.
+7. **Apply the complete-strip height limit.** Include both artwork panels,
+   rectangular base tabs, and any border in `max_height_mm`, defaulting to 297 mm.
+   Shorten the panels to fit, keeping base width unchanged. Return
+   `Error::HeightLimitExceeded` only when the base tabs and minimum cutting
+   space cannot fit. Dimensions round down to whole pixels.
 8. **Reserve elevation and resize proportionally.** Position reserves 0%, 10%,
    or 30% of panel height below grounded, hovering, or flying artwork. Scale the
    trimmed image into the remaining width and height, including cutting insets. Lanczos3 resampling uses premultiplied alpha to prevent
@@ -40,17 +41,21 @@ Raster operations use whole pixels.
    can change either dimension by less than one pixel.
 9. **Position the artwork and add the base.** Center the resized artwork
    horizontally inside its panel, aligned toward the base at the chosen
-   elevation. Add an opaque white square tab below the panel. Preserve
+   elevation. Add an opaque white rectangular tab below the panel. Preserve
    transparency in the artwork panel and its clean inset.
-10. **Draw base lines and optional numbers.** Add one-pixel black horizontal
-    lines at the tab's midpoint and its join with the artwork. When numbering is
-    enabled, center the copy number in the inner half of the base.
+10. **Draw base lines and optional numbers.** Add a one-pixel black line at the
+    artwork join, plus a midpoint line below size 4. When numbering is
+    enabled, center and scale the copy number to fill its base section, keeping
+    the 1 mm inset.
 11. **Create the mirrored pair and center fold.** Reflect the completed half
     vertically above the upright half, including its base tab and divider lines.
     Add a symmetric two-row black center-fold mark outside the clean insets.
     The resulting order is
     `[flipped base | flipped artwork | upright artwork | upright base]`.
-12. **Return or export the result.** Return the RGBA image, physical dimensions,
+12. **Add an optional border.** Extend the completed strip with a black outline.
+    Keep the original pixels and physical scale. Include the border in the
+    output dimensions and the height-limit check.
+13. **Return or export the result.** Return the RGBA image, physical dimensions,
     effective DPI, retained source bounds, upright artwork and base bounds, and
     fold coordinate. The optional CLI encodes a PNG with physical-resolution
     metadata and writes it to the output path.
@@ -63,28 +68,42 @@ limit. See the library configuration and limits below.
 
 The size parameter multiplies the grid to define the nominal footprint. The
 automatic clearance leaves 0.5 mm on each edge for sizes below 1, and 1 mm on
-each edge for sizes 1 and up. On a 25 mm grid, size 0.5 produces an 11.5 × 11.5 mm
-base, size 1 produces a 23 × 23 mm base, and size 2 produces a 48 × 48 mm base.
+each edge for sizes 1 and up. On a 25 mm grid, size 0.5 produces an 11.5 mm
+base width, size 1 produces a 23 mm width, and size 2 produces a 48 mm width.
 Set `base_clearance_mm` to `Some(total_mm)` (CLI `--base-clearance-mm`) to override
 this allowance, including zero for an exact fit. `None` selects the automatic
 rule. Clearance is applied once after the grid multiplier. Base shape currently
 supports `Rectangle`.
 
-The fixed panel height is 1.5 times the actual base width, including cutting
-insets and the center-fold stroke. Every image in the same size category has
-the same panel and strip dimensions, independent of aspect ratio and position.
+Panel height prefers 1.5 times the actual base width, including cutting insets
+and the center-fold stroke. If the strip would exceed the height limit, shorten
+both panels equally. Base width and tab depth stay unchanged; artwork scales
+proportionally to fit. Images with the same size and height limit share panel
+and strip dimensions.
 
-| Size | Grid footprint | Actual square base | Fixed panel height | Unfolded strip height |
+The **two opposite feet together span the grid-sized base width**, after
+clearance. Below size 4, each tab has two sections: its outer section folds
+under the numbered section, so each foot extends half the tab's depth. At
+size 4 and above, each tab has one section, already half the footprint depth.
+Together the feet form a square footprint matching the grid size and multiplier.
+Raster rounding can make the combined depth shorter by at most one pixel;
+the outer border is separate.
+
+| Size | Base width | Preferred panel height | Preferred base depth | Preferred strip height |
 |---|---|---|---|---|
-| 0.5 | 12.5 mm | 11.5 mm | 17.25 mm | 57.5 mm |
-| 1 | 25 mm | 23 mm | 34.5 mm | 115 mm |
-| 2 | 50 mm | 48 mm | 72 mm | 240 mm |
-| 3 | 75 mm | 73 mm | 109.5 mm | 365 mm |
+| 0.25 | 5.25 mm | 7.875 mm | 5.25 mm | 26.25 mm |
+| 0.5 | 11.5 mm | 17.25 mm | 11.5 mm | 57.5 mm |
+| 1 | 23 mm | 34.5 mm | 23 mm | 115 mm |
+| 2 | 48 mm | 72 mm | 48 mm | 240 mm |
+| 3 | 73 mm | 109.5 mm | 73 mm | 365 mm |
+| 4 | 98 mm | 147 mm | 49 mm | 392 mm |
+| 5 | 123 mm | 184.5 mm | 61.5 mm | 492 mm |
 
-Raster dimensions can be slightly smaller after rounding. The full strip must
-fit `max_height_mm`, defaulting to 297 mm for A4 portrait. Size 3 requires a
-larger available height, for example `--max-height-mm 365`. A smaller height
-limit returns a typed error so the selected size keeps its fixed proportions.
+The height limit shortens only the artwork panels. It never shrinks the base
+or folded footprint. For example, size 3 retains a 73 × 73 mm folded footprint
+on A4; size 5 retains 123 × 123 mm, with two 61.5 mm feet. Artwork scales
+proportionally into the available panel. If the base tabs and minimum cutting
+insets cannot fit, preparation returns an error. Numbering does not change sizing.
 
 ## Position
 
@@ -123,11 +142,13 @@ time. Trimming and resizing run once per source. Each iterator item is a
 `Result<PreparedImage, Error>`; `copy_number` records the printed number.
 Calling `prepare` directly with numbering enabled produces number 1.
 
-Numbers use bundled **Atkinson Hyperlegible Bold**, black on white, in the inner
-half of each tab. The font was designed for readers with low vision
+Numbers use bundled **Atkinson Hyperlegible Bold**, black on white, centered in
+the numbered section of each tab. The font was designed for readers with low vision
 ([Braille Institute](https://www.brailleinstitute.org/about-us/news/braille-institute-launches-enhanced-atkinson-hyperlegible-font-to-make-reading-easier/)).
-Digits target 4 mm height and shrink to fit, preserving a 1 mm cutting inset.
-Labels below 2.5 mm or 8 pixels high return an error. No font installation is
+Numbers scale proportionally to fill as much of the section as possible,
+preserving a 1 mm inset from edges and fold lines. There is no fixed font-size cap.
+Labels below 2.5 mm or 8 pixels high return an error. The shallow bases at
+size 0.25 may be too small for numbering with the 1 mm inset. No font installation is
 needed; the font's SIL Open Font License is in `assets/fonts/OFL.txt`.
 
 ```sh
@@ -141,6 +162,14 @@ Multiple copies produce files such as `image_1-standee-1.png` through
 `image_1-standee-4.png`. A single copy uses the output filename unchanged.
 `--copies` also works without numbering. When packing numbered standees, pass
 each generated copy as a separate item with quantity 1 to preserve its number.
+
+## Border
+
+Set `border_px` (CLI `--border-px`) to draw a black rectangular outline outside
+the completed strip. The library and development CLI default to 0; the desktop
+app uses 3 px. The border increases the returned pixel and physical dimensions
+without shrinking the base, artwork, or cutting insets. Height limits include
+the border. Use the returned `width_mm` when packing a bordered standee.
 
 ## Library
 
@@ -176,8 +205,8 @@ than one pixel per dimension. Color profiles are not preserved.
 
 The result includes physical dimensions, effective DPI, the retained source
 bounds, upright artwork/base rectangles, and the center fold coordinate. Physical
-width equals grid size times size minus clearance; height and effective DPI use
-the same pixel scale after rounding. `RgbaImage::save` does not retain this
+width equals grid size times size minus clearance, plus any border; height and
+effective DPI use the same pixel scale after rounding. `RgbaImage::save` does not retain this
 physical-size metadata; use the CLI or keep the result dimensions with the image.
 
 ## Development CLI

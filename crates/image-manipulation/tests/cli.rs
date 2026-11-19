@@ -157,11 +157,17 @@ fn cli_applies_the_complete_strip_height_limit() {
         .args(["--size", "2", "--max-height-mm", "180"])
         .output()
         .unwrap();
-    assert!(!result.status.success());
-    let message = String::from_utf8_lossy(&result.stderr);
-    assert!(message.contains("fixed standee requires"));
-    assert!(message.contains("180.00"));
-    assert!(!output.exists());
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let image = image::open(&output).unwrap();
+    let width_mm = 48.0;
+    let height_mm = f64::from(image.height()) * width_mm / f64::from(image.width());
+    assert!(height_mm <= 180.0);
+    assert!(height_mm > 179.0);
+    assert_eq!(image.width(), 567);
 }
 
 #[test]

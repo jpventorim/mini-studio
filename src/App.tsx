@@ -23,10 +23,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageInspector } from "./ImageInspector";
 import { PrintPreview } from "./PrintPreview";
 import {
+  defaultImageSettings,
   defaultSettings,
   desktop,
   isPaperSize,
-  type PreviewPage,
+  type PreparedLayout,
   type PrintError,
   type PrintImage,
   type PrintRequest,
@@ -53,8 +54,12 @@ function App() {
   const [settings, setSettings] = useState(defaultSettings);
   const [images, setImages] = useState<PrintImage[]>([]);
   const [selectedId, setSelectedId] = useState<number>();
-  const [pages, setPages] = useState<PreviewPage[]>([]);
+  const [layout, setLayout] = useState<PreparedLayout>({
+    pages: [],
+    images: [],
+  });
   const [preview, setPreview] = useState<PreviewResult>();
+  const [dismissedProblem, setDismissedProblem] = useState<PrintRequest>();
   const [importing, setImporting] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -77,6 +82,12 @@ function App() {
       ? `${problemImage.name} — ${problem.message}`
       : problem?.message;
 
+  useEffect(() => {
+    if (!current || !preview?.error) return;
+    const timeout = window.setTimeout(() => setDismissedProblem(request), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [current, preview, request]);
+
   function updateSettings(patch: Partial<SheetSettings>) {
     setSettings((previous) => ({ ...previous, ...patch }));
   }
@@ -96,10 +107,7 @@ function App() {
         : desktop.chooseImages());
       const added = result.images.map((image) => ({
         ...image,
-        quantity: 1,
-        scale: 100,
-        lockRatio: true,
-        allowRotation: true,
+        ...defaultImageSettings,
       }));
       if (added.length) {
         setImages((previous) => [...previous, ...added]);
@@ -142,7 +150,7 @@ function App() {
         try {
           const result = await desktop.preview(request);
           if (active) {
-            setPages(result);
+            setLayout(result);
             setPreview({ request });
           }
         } catch (error) {
@@ -171,7 +179,7 @@ function App() {
       previous.filter((image) => image.id !== selected.id),
     );
     // Keep a snapshot while repacking, without showing copies of a removed image.
-    if (images.length === 1) setPages([]);
+    if (images.length === 1) setLayout({ pages: [], images: [] });
     setSelectedId(undefined);
     window.requestAnimationFrame(() => {
       document
@@ -234,6 +242,18 @@ function App() {
               }
             >
               <div className="print-settings">
+                <Select
+                  label="Grid size"
+                  value={String(settings.gridSizeMm)}
+                  items={[
+                    { value: "25", label: "25 mm" },
+                    { value: "20", label: "20 mm" },
+                  ]}
+                  onValueChange={(grid) => {
+                    if (grid === "20" || grid === "25")
+                      updateSettings({ gridSizeMm: grid === "20" ? 20 : 25 });
+                  }}
+                />
                 <NumberField
                   label="Image DPI"
                   value={settings.dpi}
@@ -362,7 +382,14 @@ function App() {
                 <ImageInspector
                   key={selected.id}
                   image={selected}
-                  dpi={settings.dpi}
+                  prepared={
+                    current && !problem
+                      ? layout.images.find(
+                          (image) => image.imageId === selected.id,
+                        )
+                      : undefined
+                  }
+                  gridSizeMm={settings.gridSizeMm}
                   problem={
                     problem?.imageId === selected.id
                       ? problem.message
@@ -377,11 +404,13 @@ function App() {
         </aside>
 
         <PrintPreview
-          pages={pages}
+          pages={layout.pages}
+          preparedImages={layout.images}
           images={images}
           size={pageDimensions(settings)}
           pending={pending}
-          problem={problemText}
+          problem={dismissedProblem === request ? undefined : problemText}
+          onDismissProblem={() => setDismissedProblem(request)}
         />
 
         {notice && (

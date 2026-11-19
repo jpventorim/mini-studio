@@ -1,11 +1,12 @@
 //! Prepare printable, foldable standees from borrowed images.
 //!
 //! Trims transparent or plain-background margins, scales the artwork to 90% of
-//! the base width, adds a square base tab, and mirrors the completed half above
-//! the original. Each artwork panel, including padding, is 1.5 times the base
-//! width. Position places artwork on the ground, hovering, or flying. The
-//! complete strip is checked against a configurable height limit, defaulting
-//! to 297 mm. Each white base has a black line halfway through it.
+//! the base width, adds a rectangular base tab, and mirrors the completed half above
+//! the original. Each artwork panel prefers 1.5 times the base width, including
+//! padding, and shortens to fit the height limit while preserving base width.
+//! Position places artwork on the ground, hovering, or flying. The complete
+//! strip defaults to a 297 mm height limit. Below size 4, each base has a
+//! halfway line; size 4 and up keep only the inner, numbered section.
 //!
 //! ```
 //! use image::{Rgba, RgbaImage};
@@ -46,12 +47,14 @@ pub struct PixelRect {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum BaseShape {
-    /// A full grid-sized square tab with a horizontal divider halfway down.
+    /// A tab sized so the two opposite folded feet span the grid-sized width.
+    /// Below size 4, its outer half folds underneath. At size 4 and up it
+    /// contains only one section, half the footprint depth.
     #[default]
     Rectangle,
 }
 
-/// Vertical position of the artwork inside its fixed panel.
+/// Vertical position of the artwork inside its height-limited panel.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Position {
@@ -77,6 +80,9 @@ impl Position {
 /// Physical sizing and trimming options.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManipulationOptions {
+    /// Black outline outside the completed strip, in pixels; defaults to zero.
+    /// The outline increases physical output dimensions without shrinking artwork.
+    pub border_px: u32,
     /// Number copies from 1 for each source; defaults to false.
     /// Use [`prepare_copies`] for quantities. [`prepare`] labels a single copy 1.
     pub number_copies: bool,
@@ -90,15 +96,15 @@ pub struct ManipulationOptions {
     pub base_clearance_mm: Option<f64>,
     /// Target raster resolution; defaults to 300 pixels per inch.
     pub dpi: f64,
-    /// Base shape; currently a full square rectangular tab.
+    /// Base shape; a rectangle sized to preserve the folded grid footprint.
     pub base_shape: BaseShape,
     /// Vertical placement of artwork; defaults to grounded.
     pub position: Position,
     /// Fraction of the base width occupied by artwork; defaults to 0.9.
     pub artwork_width_ratio: f64,
     /// Maximum height of the complete mirrored strip, including both base tabs.
-    /// Defaults to 297 mm, the height of A4 portrait paper. A fixed strip that
-    /// exceeds this limit returns an error.
+    /// Defaults to 297 mm. Artwork panels shorten to fit without reducing base
+    /// width. Returns an error when base tabs and minimum insets cannot fit.
     pub max_height_mm: f64,
     /// How to identify empty source margins.
     pub trim: TrimOptions,
@@ -107,6 +113,7 @@ pub struct ManipulationOptions {
 impl Default for ManipulationOptions {
     fn default() -> Self {
         Self {
+            border_px: 0,
             number_copies: false,
             size: 1.0,
             grid_size_mm: 25.0,
@@ -124,11 +131,13 @@ impl Default for ManipulationOptions {
 /// Prepared RGBA pixels and physical dimensions suitable for `image-packing`.
 #[derive(Debug, Clone)]
 pub struct PreparedImage {
+    /// Whether each base retains its outer unnumbered flap; false at size 4 and up.
+    pub base_has_flap: bool,
     /// Number printed on both base tabs, or `None` when numbering is disabled.
     pub copy_number: Option<usize>,
     /// Mirrored pair: flipped base and artwork above upright artwork and base.
     pub image: RgbaImage,
-    /// Actual base width after subtracting clearance, in millimetres.
+    /// Total output width, including any border, in millimetres.
     pub width_mm: f64,
     /// Total height at the same physical scale, in millimetres.
     pub height_mm: f64,
@@ -138,7 +147,7 @@ pub struct PreparedImage {
     pub source_bounds: PixelRect,
     /// Upright artwork rectangle in the lower half, excluding its padding.
     pub artwork_bounds: PixelRect,
-    /// Upright full-square base rectangle, at the bottom of the strip.
+    /// Upright base rectangle, at the bottom of the strip.
     pub base_bounds: PixelRect,
     /// Horizontal fold coordinate between the mirrored halves.
     pub fold_y: u32,
@@ -154,9 +163,9 @@ pub enum Error {
     /// No pixels remain after trimming the background.
     #[error("the image contains no foreground pixels after trimming")]
     EmptyImage,
-    /// The fixed standee exceeds the available paper height.
+    /// Base tabs and minimum artwork insets exceed the available paper height.
     #[error(
-        "fixed standee requires {required_mm:.2} mm height, exceeding the {limit_mm:.2} mm limit"
+        "base tabs and cutting insets require at least {required_mm:.2} mm height, exceeding the {limit_mm:.2} mm limit"
     )]
     HeightLimitExceeded {
         /// Height of the full strip, including both tabs.
@@ -246,19 +255,19 @@ fn resize_artwork(source: &RgbaImage, width: u32, height: u32) -> Result<RgbaIma
 ///
 /// Size multiplies grid width, then the explicit or automatic clearance is subtracted to obtain
 /// the physical base width. Artwork fits within 90% of that width by default,
-/// with a fixed padded panel 1.5 times the base width in height. Both artwork dimensions
+/// with a padded panel up to 1.5 times the base width in height. Both artwork dimensions
 /// scale proportionally. Artwork is centered horizontally with at least 1 mm
 /// of clear space on every side, excluding the fold line. Insets round up to
 /// whole pixels at the effective physical scale. Position reserves elevation
-/// above the base before fitting artwork. Each base tab is one full square.
-/// The full strip must fit `max_height_mm`.
-/// Black one-pixel horizontal lines mark its midpoint, its join to the artwork,
-/// and the center fold. The complete upper half is a vertical reflection of the
+/// above the base before fitting artwork. Two folded feet together span the grid-sized base width.
+/// Artwork panels shorten to fit `max_height_mm`; base width and tab depth stay unchanged.
+/// Black one-pixel horizontal lines mark the artwork join and center fold,
+/// plus a base midpoint below size 4. The complete upper half is a vertical reflection of the
 /// lower half; no source pixels are cropped after trimming.
 ///
 /// # Errors
 /// Rejects non-positive/non-finite sizes, DPI, or height limits, ratios outside
-/// `(0, 1]`, fixed strips exceeding the height limit, insufficient space for
+/// `(0, 1]`, base tabs and minimum insets exceeding the height limit, insufficient space for
 /// padded artwork and elevation, subpixel
 /// dimensions, empty foregrounds, and images over [`MAX_IMAGE_PIXELS`].
 pub fn prepare<I>(image: &I, options: &ManipulationOptions) -> Result<PreparedImage, Error>
@@ -293,10 +302,14 @@ where
         ));
     }
     let base_width = dimension(width_mm * options.dpi / 25.4)?;
-    let base_depth = match options.base_shape {
-        BaseShape::Rectangle => base_width,
-    };
     let pixels_per_mm = f64::from(base_width) / width_mm;
+    let base_has_flap = options.size < 4.0;
+    // The two folded feet together span the grid-sized base width. Smaller
+    // tabs include a second section folded underneath; larger tabs do not.
+    let base_depth = match options.base_shape {
+        BaseShape::Rectangle if base_has_flap => base_width,
+        BaseShape::Rectangle => (base_width / 2).max(1),
+    };
     let padding = dimension(pixels_per_mm.ceil())?;
     let horizontal_padding = padding.checked_mul(2).ok_or(Error::ImageTooLarge)?;
     // The center fold consumes one pixel in each half, outside the clear inset.
@@ -311,13 +324,44 @@ where
         ))?;
     let max_art_width =
         dimension(f64::from(base_width) * options.artwork_width_ratio)?.min(inner_width);
-    // Every image in a size category shares this panel, rounded down to pixels.
-    let panel_height = dimension((f64::from(base_width) * 1.5).floor())?;
+    let border_twice = options
+        .border_px
+        .checked_mul(2)
+        .ok_or(Error::ImageTooLarge)?;
+    let minimum_panel = dimension(
+        ((f64::from(vertical_padding) + 1.0) / (1.0 - options.position.elevation_ratio())).ceil(),
+    )?;
+    let minimum_half = base_depth
+        .checked_add(minimum_panel)
+        .ok_or(Error::ImageTooLarge)?;
+    let minimum_height = minimum_half
+        .checked_mul(2)
+        .and_then(|height| height.checked_add(border_twice))
+        .ok_or(Error::ImageTooLarge)?;
+    let available_pixels = (options.max_height_mm * f64::from(base_width) / width_mm)
+        .floor()
+        .min(f64::from(u32::MAX)) as u32;
+    if available_pixels < minimum_height {
+        return Err(Error::HeightLimitExceeded {
+            required_mm: f64::from(minimum_height) * width_mm / f64::from(base_width),
+            limit_mm: options.max_height_mm,
+        });
+    }
+    let preferred_panel = dimension((f64::from(base_width) * 1.5).floor())?;
+    let available_half = (available_pixels - border_twice) / 2;
+    let panel_height = preferred_panel.min(available_half - base_depth);
     let half_height = panel_height
         .checked_add(base_depth)
         .ok_or(Error::ImageTooLarge)?;
     let total_height = half_height.checked_mul(2).ok_or(Error::ImageTooLarge)?;
-    let height_mm = f64::from(total_height) * width_mm / f64::from(base_width);
+    let output_width = base_width
+        .checked_add(border_twice)
+        .ok_or(Error::ImageTooLarge)?;
+    let output_height = total_height
+        .checked_add(border_twice)
+        .ok_or(Error::ImageTooLarge)?;
+    check_dimensions(output_width, output_height)?;
+    let height_mm = f64::from(output_height) * width_mm / f64::from(base_width);
     if height_mm > options.max_height_mm {
         return Err(Error::HeightLimitExceeded {
             required_mm: height_mm,
@@ -349,7 +393,9 @@ where
             half.put_pixel(x, y, Rgba([255, 255, 255, 255]));
         }
     }
-    for y in [panel_height, panel_height + base_depth / 2] {
+    for y in
+        std::iter::once(panel_height).chain(base_has_flap.then_some(panel_height + base_depth / 2))
+    {
         for x in 0..base_width {
             half.put_pixel(x, y, Rgba([0, 0, 0, 255]));
         }
@@ -370,6 +416,7 @@ where
         }
     }
     let mut result = PreparedImage {
+        base_has_flap,
         copy_number: None,
         width_mm,
         height_mm,
@@ -392,6 +439,25 @@ where
     };
     if options.number_copies {
         numbering::draw(&mut result, 1)?;
+    }
+    if options.border_px > 0 {
+        let mut bordered = canvas(output_width, output_height)?;
+        for pixel in bordered.pixels_mut() {
+            *pixel = Rgba([0, 0, 0, 255]);
+        }
+        imageops::replace(
+            &mut bordered,
+            &result.image,
+            i64::from(options.border_px),
+            i64::from(options.border_px),
+        );
+        result.image = bordered;
+        result.width_mm = f64::from(output_width) * width_mm / f64::from(base_width);
+        result.artwork_bounds.x += options.border_px;
+        result.artwork_bounds.y += options.border_px;
+        result.base_bounds.x += options.border_px;
+        result.base_bounds.y += options.border_px;
+        result.fold_y += options.border_px;
     }
     Ok(result)
 }

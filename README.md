@@ -9,21 +9,41 @@ users do not compile CLI dependencies unless they enable the `cli` feature.
 
 Run `bun run tauri dev` to open the print workspace. Add PNG or JPEG files with
 the clickable drop area or drag them into the window. Set the paper size and
-each image's quantity and scale. The live preview repacks the sheets as you
+each image's quantity and grid multiplier. Allowed sizes are 0.25, 0.5, 1, 2, 3,
+4, and 5. Arrow keys move between these values; other typed sizes are rejected.
+Artwork is grounded; the position control is hidden for now. Inputs are trimmed and
+prepared as mirrored standees before packing. Each strip has rectangular base tabs,
+fold lines, and a 3 px black outline by default. Enable **Number copies** to
+start a separate sequence at 1 for each image. The live preview repacks the sheets as you
 edit. Scroll to zoom or drag to pan the canvas. The floating controls in the
 bottom-right adjust zoom and fit the sheets. **Advanced** expands to show
-exact width and height controls, an aspect-ratio lock, and a 90° rotation
-toggle for the selected image. Rotation is enabled when an image is added.
+border thickness, base clearance, artwork width, background trimming, and a
+90° rotation toggle. Rotation is enabled when an image is added.
 
-The workspace starts with A4 portrait, 300 DPI, 5 mm margins, and 2 mm spacing.
-**Print settings** adjusts DPI, margins, and spacing.
+The workspace starts with A4 portrait, 300 DPI, a 25 mm grid, 2 mm margins, and
+zero spacing. A2, A3, and Letter are also available. **Print settings** offers
+25 mm (default) or 20 mm grids and adjusts DPI, margins, and spacing.
+Margin and spacing arrow keys step by 0.5 mm.
 **Export PDF…** opens the system save dialog. Print the resulting PDF at actual
 size to preserve the dimensions shown in the editor.
+Layout errors appear above the sidebar and disappear after three seconds.
+The X button closes them sooner; the selected image keeps its inline error.
+
+Tauri coordinates two independent stages: `image-manipulation` produces pixels
+and physical dimensions; `image-packing` arranges those results and exports PDF.
+Preview and export use the same prepared images and layout. Neither crate calls
+the other at runtime. Base shape is currently fixed to a rectangle, and the
+available standee height is derived from the selected paper and margins.
+Base width takes priority: artwork panels shorten when the strip reaches that
+height limit. The two folded feet together span the grid footprint after
+clearance. Below size 4, the outer sections fold underneath; sizes 4 and 5 use
+one section per tab. Base dimensions stay fixed when height is capped, while
+artwork scales proportionally to fit. The editor shows the folded footprint.
 
 The workspace also contains [`image-manipulation`](crates/image-manipulation/README.md)
 to trim and size an image into a vertically mirrored, foldable standee with
-square base tabs. It defaults to a 25 mm grid, size 1, 1 mm clearance per edge
-(a 23 mm base), artwork up to 90% of the base width, fixed panels 1.5 times the
+rectangular base tabs. It defaults to a 25 mm grid, size 1, 1 mm clearance per edge
+(a 23 mm base), artwork up to 90% of the base width, panels up to 1.5 times the
 base width in height, grounded placement, and white tabs with a halfway line.
 Choose `--position grounded|hovering|flying` to raise the artwork by 0%, 10%, or
 30% of panel height. All positions keep the same strip dimensions and at least

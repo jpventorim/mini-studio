@@ -1,7 +1,18 @@
-import { Badge, EmptyState, Notice, PreviewControls } from "@rust-foundry/ui";
-import { ImagePlus } from "lucide-react";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Notice,
+  PreviewControls,
+} from "@rust-foundry/ui";
+import { ImagePlus, X } from "lucide-react";
 import { type CSSProperties, memo, useId, useMemo } from "react";
-import type { ImageSize, PreviewPage, PrintImage } from "./print-workspace";
+import type {
+  ImageSize,
+  PreparedPreviewImage,
+  PreviewPage,
+  PrintImage,
+} from "./print-workspace";
 import { usePreviewCamera } from "./usePreviewCamera";
 
 const PageArtwork = memo(function PageArtwork({
@@ -11,7 +22,7 @@ const PageArtwork = memo(function PageArtwork({
 }: {
   page: PreviewPage;
   index: number;
-  sources: ReadonlyMap<number, PrintImage>;
+  sources: ReadonlyMap<number, PreparedPreviewImage>;
 }) {
   return (
     <div
@@ -21,7 +32,7 @@ const PageArtwork = memo(function PageArtwork({
       aria-label={`Page ${index + 1}, ${page.placements.length} image copies`}
     >
       {page.placements.map((placement) => {
-        const image = sources.get(placement.imageId);
+        const image = sources.get(placement.sourceIndex);
         if (!image) return null;
         const x = (placement.xMm / page.widthMm) * 100;
         const y = (placement.yMm / page.heightMm) * 100;
@@ -59,25 +70,33 @@ const PageArtwork = memo(function PageArtwork({
 export function PrintPreview({
   pages,
   images,
+  preparedImages,
   size,
   pending,
   problem,
+  onDismissProblem,
 }: {
   pages: PreviewPage[];
   images: PrintImage[];
+  preparedImages: PreparedPreviewImage[];
   size: ImageSize;
   pending: boolean;
   problem?: string;
+  onDismissProblem: () => void;
 }) {
   const helpId = useId();
   const { anchor, camera, fit, panning, strip, stageProps, zoomIn, zoomOut } =
     usePreviewCamera();
   const width = pages[0]?.widthMm ?? size.width;
   const height = pages[0]?.heightMm ?? size.height;
-  const sources = useMemo(
-    () => new Map(images.map((image) => [image.id, image])),
-    [images],
-  );
+  const sources = useMemo(() => {
+    const active = new Set(images.map((image) => image.id));
+    return new Map(
+      preparedImages
+        .map((image, index) => [index, image] as const)
+        .filter(([, image]) => active.has(image.imageId)),
+    );
+  }, [images, preparedImages]);
   const sheets = useMemo(
     () =>
       pages.map((page, index) => (
@@ -154,7 +173,21 @@ export function PrintPreview({
       </section>
 
       {problem && (
-        <Notice className="preview-message" tone="error">
+        <Notice
+          className="preview-message"
+          tone="error"
+          action={
+            <Button
+              type="button"
+              variant="ghost"
+              iconOnly
+              aria-label="Dismiss error"
+              onClick={onDismissProblem}
+            >
+              <X size={17} aria-hidden="true" />
+            </Button>
+          }
+        >
           {problem}
         </Notice>
       )}

@@ -2,49 +2,38 @@ import {
   Accordion,
   Button,
   Checkbox,
-  DimensionFields,
   Notice,
   NumberField,
   Readout,
-  Slider,
+  Select,
 } from "@rust-foundry/ui";
 import { Trash2 } from "lucide-react";
 import {
-  type ImageSize,
-  imageDimensions,
+  isStandeeSize,
   millimetres,
+  type PreparedPreviewImage,
   type PrintImage,
+  standeeSizes,
 } from "./print-workspace";
 
 export function ImageInspector({
   image,
-  dpi,
+  prepared,
+  gridSizeMm,
   problem,
   update,
   remove,
 }: {
   image: PrintImage;
-  dpi: number;
+  prepared?: PreparedPreviewImage;
+  gridSizeMm: number;
   problem?: string;
   update: (patch: Partial<PrintImage>) => void;
   remove: () => void;
 }) {
-  const size = imageDimensions(image, dpi);
-  const ratio = image.width / image.height;
-
-  function setDimension(key: keyof ImageSize, value: number) {
-    const customSize = { ...size, [key]: value };
-    if (image.lockRatio) {
-      if (key === "width") customSize.height = value / ratio;
-      else customSize.width = value * ratio;
-    }
-    update({ customSize });
-  }
-
-  function setScale(scale: number) {
-    update({ scale, customSize: undefined });
-  }
-
+  const automaticClearance = image.size < 1 ? 1 : 2;
+  const baseWidth =
+    image.size * gridSizeMm - (image.baseClearanceMm ?? automaticClearance);
   return (
     <section className="inspector" aria-labelledby="image-settings-heading">
       <div className="inspector-heading">
@@ -66,7 +55,6 @@ export function ImageInspector({
           <Trash2 size={17} aria-hidden="true" />
         </Button>
       </div>
-
       <div className="inspector-controls">
         <NumberField
           label="Quantity"
@@ -78,41 +66,39 @@ export function ImageInspector({
           max={999}
           onChange={(quantity) => update({ quantity })}
         />
-        <div>
-          <NumberField
-            label="Scale"
-            labelLayout="inline"
-            integer
-            min={1}
-            max={400}
-            value={image.scale}
-            unit="%"
-            onChange={setScale}
-          />
-          <Slider
-            label="Image scale"
-            hideHeading
-            min={1}
-            max={400}
-            step={1}
-            value={image.scale}
-            onValueChange={setScale}
-          />
-        </div>
+        <NumberField
+          label="Size"
+          unit="× grid"
+          value={image.size}
+          min={0.25}
+          max={5}
+          allowedValues={standeeSizes}
+          onChange={(size) => {
+            if (isStandeeSize(size)) update({ size });
+          }}
+        />
         <Readout
-          label={image.customSize ? "Custom size" : "Print size"}
-          value={`${millimetres.format(size.width)} × ${millimetres.format(size.height)} mm`}
-          action={
-            image.customSize && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => update({ customSize: undefined })}
-              >
-                Reset to scale
-              </Button>
-            )
+          label="Folded footprint"
+          value={
+            prepared
+              ? `${millimetres.format(prepared.baseWidthMm)} × ${millimetres.format(prepared.baseDepthMm * (image.size >= 4 ? 2 : 1))} mm`
+              : `${millimetres.format(baseWidth)} × ${millimetres.format(baseWidth)} mm`
+          }
+        />
+        <Checkbox
+          label="Number copies"
+          markAlignment="start"
+          checked={image.numberCopies}
+          onCheckedChange={(numberCopies) => update({ numberCopies })}
+        />
+        <Readout
+          label="Standee print size"
+          value={
+            prepared
+              ? `${millimetres.format(prepared.widthMm)} × ${millimetres.format(prepared.heightMm)} mm`
+              : problem
+                ? "Unavailable"
+                : "Preparing…"
           }
         />
         {problem && (
@@ -121,7 +107,6 @@ export function ImageInspector({
           </Notice>
         )}
       </div>
-
       <Accordion
         headingLevel={3}
         items={[
@@ -130,31 +115,116 @@ export function ImageInspector({
             title: "Advanced",
             content: (
               <div className="rf-stack">
-                <DimensionFields
-                  unit="mm"
-                  width={size.width}
-                  height={size.height}
-                  min={0.01}
-                  max={1000}
-                  locked={image.lockRatio}
-                  onWidthChange={(value) => setDimension("width", value)}
-                  onHeightChange={(value) => setDimension("height", value)}
-                  onLockedChange={(lockRatio) =>
+                <NumberField
+                  label="Border"
+                  unit="px"
+                  value={image.borderPx}
+                  min={0}
+                  max={30}
+                  integer
+                  keyboardStep={1}
+                  onChange={(borderPx) => update({ borderPx })}
+                />
+                <NumberField
+                  label="Artwork width"
+                  unit="% of base"
+                  value={image.artworkWidthRatio * 100}
+                  min={1}
+                  max={100}
+                  keyboardStep={1}
+                  onChange={(value) =>
+                    update({ artworkWidthRatio: value / 100 })
+                  }
+                />
+                <Checkbox
+                  label="Automatic base clearance"
+                  markAlignment="start"
+                  checked={image.baseClearanceMm === null}
+                  onCheckedChange={(automatic) =>
                     update({
-                      lockRatio,
-                      customSize:
-                        lockRatio && image.customSize
-                          ? { width: size.width, height: size.width / ratio }
-                          : image.customSize,
+                      baseClearanceMm: automatic ? null : automaticClearance,
                     })
                   }
                 />
+                {image.baseClearanceMm !== null && (
+                  <NumberField
+                    label="Total base clearance"
+                    unit="mm"
+                    value={image.baseClearanceMm}
+                    min={0}
+                    max={100}
+                    keyboardStep={0.5}
+                    onChange={(baseClearanceMm) => update({ baseClearanceMm })}
+                  />
+                )}
+                <Select
+                  label="Trim background"
+                  value={image.trim}
+                  items={[
+                    { value: "auto", label: "Automatic" },
+                    { value: "alpha", label: "Transparency only" },
+                    { value: "color", label: "Solid color" },
+                    { value: "none", label: "Keep full image" },
+                  ]}
+                  onValueChange={(trim) => {
+                    if (
+                      trim === "auto" ||
+                      trim === "alpha" ||
+                      trim === "color" ||
+                      trim === "none"
+                    )
+                      update({ trim });
+                  }}
+                />
+                {image.trim === "color" && (
+                  <label className="rf-label">
+                    Background color
+                    <input
+                      type="color"
+                      value={image.backgroundColor}
+                      onChange={(event) =>
+                        update({ backgroundColor: event.currentTarget.value })
+                      }
+                    />
+                  </label>
+                )}
+                {image.trim !== "none" && (
+                  <>
+                    <NumberField
+                      label="Alpha threshold"
+                      value={image.alphaThreshold}
+                      min={0}
+                      max={255}
+                      integer
+                      keyboardStep={1}
+                      onChange={(alphaThreshold) => update({ alphaThreshold })}
+                    />
+                    {image.trim !== "alpha" && (
+                      <NumberField
+                        label="Color tolerance"
+                        value={image.colorTolerance}
+                        min={0}
+                        max={255}
+                        integer
+                        keyboardStep={1}
+                        onChange={(colorTolerance) =>
+                          update({ colorTolerance })
+                        }
+                      />
+                    )}
+                  </>
+                )}
                 <Checkbox
                   label="Allow 90° rotation"
                   markAlignment="start"
                   checked={image.allowRotation}
                   onCheckedChange={(allowRotation) => update({ allowRotation })}
                 />
+                <p className="asset-pixels">
+                  The base is rectangular. Standee height must fit the selected
+                  paper after margins. Artwork keeps at least 1 mm of cutting
+                  space.
+                </p>
               </div>
             ),
           },

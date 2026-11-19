@@ -47,6 +47,9 @@ struct Args {
     /// Print copy numbers on both base tabs, starting at 1 for this source.
     #[arg(long)]
     number_copies: bool,
+    /// Black outline outside the strip, in pixels.
+    #[arg(long, default_value_t = 0)]
+    border_px: u32,
     /// Base width as a multiplier of the grid size.
     #[arg(long, default_value_t = 1.0)]
     size: f64,
@@ -62,13 +65,13 @@ struct Args {
     /// Base shape added below the artwork, then mirrored with it.
     #[arg(long, value_enum, default_value = "rectangle")]
     base_shape: Shape,
-    /// Vertical artwork position within the fixed panel.
+    /// Vertical artwork position within the height-limited panel.
     #[arg(long, value_enum, default_value = "grounded")]
     position: Placement,
     /// Fraction of the base width occupied by the artwork.
     #[arg(long, default_value_t = 0.9)]
     artwork_width_ratio: f64,
-    /// Available paper height; a fixed standee exceeding it returns an error.
+    /// Available paper height; shorten panels to fit while keeping base width.
     #[arg(long, default_value_t = ManipulationOptions::default().max_height_mm)]
     max_height_mm: f64,
     /// Empty-margin detection strategy.
@@ -118,6 +121,7 @@ fn run(args: Args) -> Result<()> {
         &source,
         args.copies.get(),
         &ManipulationOptions {
+            border_px: args.border_px,
             number_copies: args.number_copies,
             size: args.size,
             grid_size_mm: args.grid_size_mm,

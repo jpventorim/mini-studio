@@ -2,6 +2,26 @@ import { expect } from "@rstest/core";
 import { componentTests } from "../../../tests/browser";
 
 componentTests("base-numberfield", {
+  "moves through allowed sizes and rejects intermediate values": async (
+    page,
+  ) => {
+    const size = page.getByRole("textbox", { name: "Size", exact: true });
+    await size.fill("0.25");
+    for (const value of [0.5, 1, 2, 3, 4, 5, 5]) {
+      await size.press("ArrowUp");
+      expect(await size.inputValue()).toBe(String(value));
+    }
+    for (const value of [4, 3, 2, 1, 0.5, 0.25, 0.25]) {
+      await size.press("ArrowDown");
+      expect(await size.inputValue()).toBe(String(value));
+    }
+    for (const value of ["0.75", "1.5", "6"]) {
+      await size.fill(value);
+      expect(await size.getAttribute("aria-invalid")).toBe("true");
+      await size.press("Enter");
+      expect(await size.inputValue()).toBe("0.25");
+    }
+  },
   "steps a bounded quantity and preserves only valid input": async (page) => {
     const quantity = page.getByRole("textbox", {
       name: "Quantity",

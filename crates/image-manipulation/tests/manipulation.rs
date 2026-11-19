@@ -5,6 +5,61 @@ use image_manipulation::{
 };
 
 #[test]
+fn border_preserves_pixels_physical_scale_numbering_and_metadata() {
+    let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
+    let blank = prepare(&source, &ManipulationOptions::default()).unwrap();
+    let options = ManipulationOptions {
+        border_px: 3,
+        number_copies: true,
+        ..Default::default()
+    };
+    let single = prepare(&source, &options).unwrap();
+    let first = prepare_copies(&source, 2, &options)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap();
+    assert_eq!(single.image, first.image);
+    assert_eq!(single.image.width(), blank.image.width() + 6);
+    assert_eq!(single.image.height(), blank.image.height() + 6);
+    assert_eq!(single.dpi, blank.dpi);
+    assert!((single.width_mm - blank.width_mm - 6.0 * 25.4 / blank.dpi).abs() < 1e-8);
+    assert!((single.height_mm - blank.height_mm - 6.0 * 25.4 / blank.dpi).abs() < 1e-8);
+    assert_eq!(single.base_bounds.x, blank.base_bounds.x + 3);
+    assert_eq!(single.base_bounds.y, blank.base_bounds.y + 3);
+    assert_eq!(single.fold_y, blank.fold_y + 3);
+    for (x, y, pixel) in single.image.enumerate_pixels() {
+        assert_eq!(
+            pixel,
+            single.image.get_pixel(x, single.image.height() - 1 - y)
+        );
+        if x < 3 || y < 3 || x >= single.image.width() - 3 || y >= single.image.height() - 3 {
+            assert_eq!(pixel, &Rgba([0, 0, 0, 255]));
+        } else if y >= single.artwork_bounds.y && y < single.base_bounds.y {
+            assert_eq!(pixel, blank.image.get_pixel(x - 3, y - 3));
+        }
+    }
+    let limited = ManipulationOptions {
+        max_height_mm: blank.height_mm,
+        ..options
+    };
+    let bounded = prepare(&source, &limited).unwrap();
+    assert!(bounded.height_mm <= blank.height_mm);
+    assert_eq!(bounded.width_mm, single.width_mm);
+    assert_eq!(bounded.base_bounds.width, single.base_bounds.width);
+    assert!(matches!(
+        prepare(
+            &source,
+            &ManipulationOptions {
+                border_px: u32::MAX,
+                ..Default::default()
+            }
+        ),
+        Err(Error::ImageTooLarge)
+    ));
+}
+
+#[test]
 fn trims_transparency_without_discarding_white_foreground() {
     let mut source = RgbaImage::from_pixel(12, 15, Rgba([230, 20, 180, 0]));
     for y in 4..10 {
@@ -48,10 +103,18 @@ fn copy_numbers_restart_for_each_source_and_only_change_the_base_tabs() {
             let base = copy.base_bounds;
             let inset = (copy.dpi / 25.4).ceil() as u32;
             let mut changed = 0;
+            let mut min_x = u32::MAX;
+            let mut min_y = u32::MAX;
+            let mut max_x = 0;
+            let mut max_y = 0;
             for (x, y, pixel) in copy.image.enumerate_pixels() {
                 assert_eq!(pixel, copy.image.get_pixel(x, copy.image.height() - 1 - y));
                 if pixel != blank.image.get_pixel(x, y) && y >= copy.fold_y {
                     changed += 1;
+                    min_x = min_x.min(x);
+                    min_y = min_y.min(y);
+                    max_x = max_x.max(x);
+                    max_y = max_y.max(y);
                     assert!(x >= inset && x < base.width - inset);
                     assert!(y >= base.y + 1 + inset);
                     assert!(y < base.y + base.height / 2 - inset);
@@ -61,6 +124,16 @@ fn copy_numbers_restart_for_each_source_and_only_change_the_base_tabs() {
                 }
             }
             assert!(changed > 0);
+            let left = min_x - base.x - inset;
+            let right = base.x + base.width - inset - max_x - 1;
+            let top = min_y - base.y - 1 - inset;
+            let bottom = base.y + base.height / 2 - inset - max_y - 1;
+            assert!(left.abs_diff(right) <= 2);
+            assert!(top.abs_diff(bottom) <= 2);
+            let area_width = base.width - 2 * inset;
+            let area_height = base.height / 2 - 2 * inset - 1;
+            assert!(max_x - min_x + 1 >= area_width - 3 || max_y - min_y + 1 >= area_height - 3);
+            assert!(f64::from(max_y - min_y + 1) * 25.4 / copy.dpi >= 5.9);
             if let Some(previous) = previous {
                 assert_ne!(copy.image, previous);
             }
@@ -101,7 +174,7 @@ fn numbering_is_optional_and_single_image_preparation_starts_at_one() {
 #[test]
 fn multi_digit_labels_work_at_small_and_large_sizes_without_hiding_unreadable_labels() {
     let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
-    for size in [0.5, 1.0, 2.0] {
+    for size in [0.5, 1.0, 2.0, 4.0] {
         for dpi in [72.0, 300.0, 600.0] {
             let options = ManipulationOptions {
                 size,
@@ -226,7 +299,7 @@ fn trim_thresholds_and_no_trim_are_respected() {
 }
 
 #[test]
-fn composition_is_a_vertical_reflection_with_full_white_square_tabs() {
+fn composition_is_a_vertical_reflection_with_grid_sized_tabs() {
     let mut source = RgbaImage::new(8, 12);
     for y in 2..10 {
         for x in 2..6 {
@@ -314,7 +387,10 @@ fn size_grid_and_resolution_scale_the_base_with_aspect_ratio_preserved() {
         )
         .unwrap();
         assert_eq!(output.image.width(), expected_width);
-        assert_eq!(output.base_bounds.height, expected_width);
+        assert!(
+            (f64::from(output.base_bounds.height) / f64::from(output.fold_y) - 0.4).abs()
+                <= 1.0 / f64::from(output.fold_y)
+        );
         assert!(
             (f64::from(output.artwork_bounds.height) / f64::from(output.artwork_bounds.width)
                 - 1.5)
@@ -322,6 +398,110 @@ fn size_grid_and_resolution_scale_the_base_with_aspect_ratio_preserved() {
                 < 0.01
         );
         assert!((output.width_mm - size * grid).abs() < 1e-8);
+    }
+}
+
+#[test]
+fn larger_sizes_grow_artwork_while_preserving_the_folded_footprint() {
+    let source = RgbImage::from_pixel(20, 40, Rgb([80, 20, 150]));
+    for grid_size_mm in [20.0, 25.0] {
+        let mut previous_art_height = 0.0;
+        for size in [1.0, 2.0, 3.0] {
+            let output = prepare(
+                &source,
+                &ManipulationOptions {
+                    size,
+                    grid_size_mm,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            assert!(output.base_bounds.height == output.base_bounds.width);
+            let art_height = f64::from(output.artwork_bounds.height) * 25.4 / output.dpi;
+            assert!(art_height > previous_art_height + 0.5);
+            previous_art_height = art_height;
+        }
+    }
+}
+
+#[test]
+fn size_four_and_up_keep_only_the_numbered_base_section() {
+    let source = RgbImage::from_pixel(20, 40, Rgb([80, 20, 150]));
+    for size in [3.5, 3.99, 4.0, 4.5] {
+        let options = ManipulationOptions {
+            size,
+            dpi: 100.0,
+            max_height_mm: 1000.0,
+            border_px: 3,
+            number_copies: true,
+            ..Default::default()
+        };
+        for (index, output) in prepare_copies(&source, 2, &options).unwrap().enumerate() {
+            let output = output.unwrap();
+            let base = output.base_bounds;
+            assert_eq!(output.base_has_flap, size < 4.0);
+            assert_eq!(output.copy_number, Some(index + 1));
+            let footprint_depth = if output.base_has_flap {
+                base.height
+            } else {
+                2 * base.height
+            };
+            assert!(base.width.abs_diff(footprint_depth) <= 1);
+            let is_line = |y| {
+                (base.x..base.x + base.width)
+                    .all(|x| output.image.get_pixel(x, y).0 == [0, 0, 0, 255])
+            };
+            assert!(is_line(base.y));
+            assert_eq!(is_line(base.y + base.height / 2), output.base_has_flap);
+            let inset = (output.dpi / 25.4).ceil() as u32;
+            assert!((base.x + inset..base.x + base.width - inset).any(|x| {
+                (base.y + 1 + inset..base.y + base.height - inset)
+                    .any(|y| output.image.get_pixel(x, y)[0] < 255)
+            }));
+            for (x, y, pixel) in output.image.enumerate_pixels() {
+                assert_eq!(
+                    pixel,
+                    output.image.get_pixel(x, output.image.height() - 1 - y)
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn folded_footprint_matches_the_grid_at_every_size_even_when_height_is_capped() {
+    let source = RgbImage::from_pixel(20, 40, Rgb([80, 20, 150]));
+    for grid_size_mm in [20.0, 25.0] {
+        for size in [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0] {
+            for max_height_mm in [293.0, 1000.0] {
+                let output = prepare(
+                    &source,
+                    &ManipulationOptions {
+                        size,
+                        grid_size_mm,
+                        max_height_mm,
+                        border_px: 3,
+                        dpi: 100.0,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                let foot_depth_px = if output.base_has_flap {
+                    output.base_bounds.height / 2
+                } else {
+                    output.base_bounds.height
+                };
+                let folded_depth_px = foot_depth_px * 2;
+                assert!(output.base_bounds.width.abs_diff(folded_depth_px) <= 1);
+                let expected_mm = grid_size_mm * size - if size < 1.0 { 1.0 } else { 2.0 };
+                let mm_per_pixel = 25.4 / output.dpi;
+                assert!(
+                    (f64::from(folded_depth_px) * mm_per_pixel - expected_mm).abs()
+                        <= mm_per_pixel + 1e-8
+                );
+                assert!(output.height_mm <= max_height_mm);
+            }
+        }
     }
 }
 
@@ -365,7 +545,10 @@ fn base_clearance_is_shared_by_both_edges_of_the_grid_footprint() {
         let footprint = size * 25.0;
         assert!((output.width_mm - (footprint - clearance)).abs() < 1e-8);
         assert!(((footprint - output.width_mm) / 2.0 - clearance / 2.0).abs() < 1e-8);
-        assert_eq!(output.base_bounds.width, output.base_bounds.height);
+        assert!(
+            (f64::from(output.base_bounds.height) / f64::from(output.fold_y) - 0.4).abs()
+                <= 1.0 / f64::from(output.fold_y)
+        );
     }
     for clearance in [0.0, 0.5, 2.0] {
         let output = prepare(
@@ -393,7 +576,7 @@ fn base_clearance_is_shared_by_both_edges_of_the_grid_footprint() {
 }
 
 #[test]
-fn fixed_strip_height_is_checked_against_the_available_paper_height() {
+fn panel_height_is_capped_without_reducing_the_base_width() {
     let source = RgbImage::from_pixel(8, 80, Rgb([80, 20, 160]));
     for (size, max_height_mm) in [(1.0, 115.0), (2.0, 240.0), (3.0, 365.0)] {
         let output = prepare(
@@ -406,23 +589,65 @@ fn fixed_strip_height_is_checked_against_the_available_paper_height() {
         )
         .unwrap();
         assert!(output.height_mm <= max_height_mm);
-        assert!((output.height_mm - 5.0 * output.width_mm).abs() < 0.1);
+        let panel = output.base_bounds.y - output.fold_y;
+        assert!((f64::from(panel) - f64::from(output.image.width()) * 1.5).abs() < 1.0);
         assert_eq!(output.base_bounds.width, output.image.width());
-        assert_eq!(output.base_bounds.height, output.image.width());
+        assert!(
+            (f64::from(output.base_bounds.height) / f64::from(output.fold_y) - 0.4).abs()
+                <= 1.0 / f64::from(output.fold_y)
+        );
     }
-    for (size, max_height_mm) in [(3.0, 297.0), (2.0, 180.0)] {
-        assert!(matches!(
-            prepare(
-                &source,
-                &ManipulationOptions {
-                    size,
-                    max_height_mm,
-                    ..Default::default()
-                }
-            ),
-            Err(Error::HeightLimitExceeded { .. })
-        ));
+    for (size, max_height_mm, border_px, dpi) in [
+        (3.0, 297.0, 0, 300.0),
+        (4.0, 297.0, 0, 300.0),
+        (2.0, 180.0, 0, 300.0),
+        (3.0, 293.0, 3, 72.0),
+        (4.0, 293.0, 3, 100.0),
+        (3.0, 293.0, 3, 300.0),
+    ] {
+        let output = prepare(
+            &source,
+            &ManipulationOptions {
+                size,
+                max_height_mm,
+                border_px,
+                dpi,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let base_mm = f64::from(output.base_bounds.width) * 25.4 / output.dpi;
+        assert!((base_mm - (25.0 * size - 2.0)).abs() < 1e-8);
+        let expected_depth = if size >= 4.0 { base_mm / 2.0 } else { base_mm };
+        assert!(
+            (f64::from(output.base_bounds.height) * 25.4 / output.dpi - expected_depth).abs()
+                <= 25.4 / output.dpi
+        );
+        assert!(output.height_mm <= max_height_mm);
+        let ideal_height =
+            3.0 * base_mm + 2.0 * expected_depth + 2.0 * f64::from(border_px) * 25.4 / output.dpi;
+        assert!(
+            (output.height_mm - ideal_height.min(max_height_mm)).abs()
+                < 3.0 * 25.4 / output.dpi + 1e-8
+        );
+        let mm_per_pixel = 25.4 / output.dpi;
+        assert!(f64::from(output.artwork_bounds.y - output.fold_y - 1) * mm_per_pixel >= 1.0);
+        assert!(
+            f64::from(
+                output.base_bounds.y - output.artwork_bounds.y - output.artwork_bounds.height
+            ) * mm_per_pixel
+                >= 1.0
+        );
     }
+    let too_short = ManipulationOptions {
+        size: 2.0,
+        max_height_mm: 4.0,
+        ..Default::default()
+    };
+    assert!(matches!(
+        prepare(&source, &too_short),
+        Err(Error::HeightLimitExceeded { .. })
+    ));
 }
 
 #[test]

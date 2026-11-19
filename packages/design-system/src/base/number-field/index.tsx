@@ -16,6 +16,7 @@ export function NumberField({
   unit,
   step,
   keyboardStep = step,
+  allowedValues,
   integer = false,
   labelLayout = "above",
 }: {
@@ -28,6 +29,8 @@ export function NumberField({
   step?: number;
   /** Arrow-key increment; defaults to the button step when provided. */
   keyboardStep?: number;
+  /** Restrict typed values and stepping to this ascending list. */
+  allowedValues?: readonly [number, ...number[]];
   integer?: boolean;
   labelLayout?: "above" | "inline" | "hidden";
 }) {
@@ -47,6 +50,15 @@ export function NumberField({
 
   function increment(delta: number) {
     setDraft(undefined);
+    if (allowedValues) {
+      const candidates =
+        delta > 0 ? allowedValues : [...allowedValues].reverse();
+      const next = candidates.find((candidate) =>
+        delta > 0 ? candidate > value : candidate < value,
+      );
+      if (next !== undefined) onChange(next);
+      return;
+    }
     onChange(
       Math.max(min, Math.min(max, Number((value + delta).toPrecision(12)))),
     );
@@ -96,7 +108,8 @@ export function NumberField({
                 text !== "" &&
                 number >= min &&
                 number <= max &&
-                (!integer || Number.isInteger(number));
+                (!integer || Number.isInteger(number)) &&
+                (!allowedValues || allowedValues.includes(number));
               setDraft({ text, value: valid ? number : value, valid });
               if (valid && number !== value) onChange(number);
             }}
@@ -104,14 +117,13 @@ export function NumberField({
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
               if (
-                keyboardStep !== undefined &&
-                keyboardStep > 0 &&
+                (allowedValues ||
+                  (keyboardStep !== undefined && keyboardStep > 0)) &&
                 (event.key === "ArrowUp" || event.key === "ArrowDown")
               ) {
                 event.preventDefault();
-                increment(
-                  event.key === "ArrowUp" ? keyboardStep : -keyboardStep,
-                );
+                const amount = allowedValues ? 1 : (keyboardStep ?? 1);
+                increment(event.key === "ArrowUp" ? amount : -amount);
               }
             }}
           />
@@ -132,7 +144,14 @@ export function NumberField({
       </div>
       {invalid && (
         <span className="rf-visually-hidden" id={`${id}-range`}>
-          Enter {integer ? "a whole number" : "a number"} from {min} to {max}.
+          {allowedValues ? (
+            `Choose ${allowedValues.join(", ")}.`
+          ) : (
+            <>
+              Enter {integer ? "a whole number" : "a number"} from {min} to{" "}
+              {max}.
+            </>
+          )}
         </span>
       )}
     </div>

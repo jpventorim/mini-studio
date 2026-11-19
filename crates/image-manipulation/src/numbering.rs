@@ -15,7 +15,12 @@ pub(crate) fn draw(output: &mut PreparedImage, number: usize) -> Result<(), Erro
     let base = output.base_bounds;
     // Exclude the join and midpoint strokes, then retain a full 1 mm inset.
     let area_width = base.width.saturating_sub(2 * inset);
-    let area_height = (base.height / 2).saturating_sub(2 * inset + 1);
+    let numbered_depth = if output.base_has_flap {
+        base.height / 2
+    } else {
+        base.height
+    };
+    let area_height = numbered_depth.saturating_sub(2 * inset + 1);
     let too_small = || {
         Error::InvalidInput(
             "copy number needs more base space or DPI: keep 1 mm insets and at least 2.5 mm / 8 pixels of digit height",
@@ -42,9 +47,7 @@ pub(crate) fn draw(output: &mut PreparedImage, number: usize) -> Result<(), Erro
         cursor += font.h_advance_unscaled(id);
     }
     let height = top - bottom;
-    let factor = (4.0 * ppm as f32 / height)
-        .min((area_width - 1) as f32 / (right - left))
-        .min((area_height - 1) as f32 / height);
+    let factor = ((area_width - 1) as f32 / (right - left)).min((area_height - 1) as f32 / height);
     let digit_height = height * factor;
     if digit_height < (2.5 * ppm) as f32 || digit_height < 8.0 {
         return Err(too_small());

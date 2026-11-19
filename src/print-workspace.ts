@@ -12,6 +12,7 @@ export type SheetSettings = {
   dpi: number;
   marginMm: number;
   spacingMm: number;
+  gridSizeMm: 20 | 25;
 };
 
 export function isPaperSize(value: unknown): value is SheetSettings["paper"] {
@@ -23,6 +24,7 @@ export const defaultSettings: SheetSettings = {
   dpi: 300,
   marginMm: 2,
   spacingMm: 0,
+  gridSizeMm: 25,
 };
 
 export type ImportedImage = {
@@ -35,18 +37,60 @@ export type ImportedImage = {
 
 export type ImageSize = { width: number; height: number };
 
+export const standeeSizes = [0.25, 0.5, 1, 2, 3, 4, 5] as const;
+export type StandeeSize = (typeof standeeSizes)[number];
+export function isStandeeSize(value: number): value is StandeeSize {
+  return standeeSizes.some((size) => size === value);
+}
+
 export type PrintImage = ImportedImage & {
   quantity: number;
-  scale: number;
-  customSize?: ImageSize;
-  lockRatio: boolean;
+  size: StandeeSize;
+  numberCopies: boolean;
+  borderPx: number;
+  baseClearanceMm: number | null;
+  artworkWidthRatio: number;
+  trim: "auto" | "alpha" | "color" | "none";
+  backgroundColor: string;
+  alphaThreshold: number;
+  colorTolerance: number;
   allowRotation: boolean;
+};
+
+export const defaultImageSettings = {
+  quantity: 1,
+  size: 1,
+  numberCopies: false,
+  borderPx: 3,
+  baseClearanceMm: null,
+  artworkWidthRatio: 0.9,
+  trim: "auto",
+  backgroundColor: "#ffffff",
+  alphaThreshold: 0,
+  colorTolerance: 8,
+  allowRotation: true,
+} satisfies Omit<PrintImage, keyof ImportedImage>;
+
+export type PreparedPreviewImage = {
+  imageId: number;
+  preview: string;
+  widthMm: number;
+  heightMm: number;
+  copyNumber: number | null;
+  baseWidthMm: number;
+  baseDepthMm: number;
+};
+
+export type PreparedLayout = {
+  pages: PreviewPage[];
+  images: PreparedPreviewImage[];
 };
 
 export type PreviewPage = {
   widthMm: number;
   heightMm: number;
   placements: {
+    sourceIndex: number;
     imageId: number;
     copyIndex: number;
     xMm: number;
@@ -70,12 +114,6 @@ export function pageDimensions({ paper }: SheetSettings): ImageSize {
   return { width, height };
 }
 
-export function imageDimensions(image: PrintImage, dpi: number): ImageSize {
-  if (image.customSize) return image.customSize;
-  const factor = (25.4 * image.scale) / (100 * dpi);
-  return { width: image.width * factor, height: image.height * factor };
-}
-
 export function printRequest(images: PrintImage[], settings: SheetSettings) {
   const page = pageDimensions(settings);
   return {
@@ -84,14 +122,23 @@ export function printRequest(images: PrintImage[], settings: SheetSettings) {
     dpi: settings.dpi,
     marginMm: settings.marginMm,
     spacingMm: settings.spacingMm,
+    gridSizeMm: settings.gridSizeMm,
     items: images.map((image) => {
-      const size = imageDimensions(image, settings.dpi);
       return {
         id: image.id,
         quantity: image.quantity,
         allowRotation: image.allowRotation,
-        widthMm: size.width,
-        heightMm: image.customSize && !image.lockRatio ? size.height : null,
+        size: image.size,
+        numberCopies: image.numberCopies,
+        borderPx: image.borderPx,
+        baseClearanceMm: image.baseClearanceMm,
+        artworkWidthRatio: image.artworkWidthRatio,
+        trim: image.trim,
+        backgroundColor: [1, 3, 5].map((offset) =>
+          Number.parseInt(image.backgroundColor.slice(offset, offset + 2), 16),
+        ),
+        alphaThreshold: image.alphaThreshold,
+        colorTolerance: image.colorTolerance,
       };
     }),
   };
@@ -105,7 +152,7 @@ export const desktop = {
     invoke<ImportResult>("import_images", { paths }),
   removeImage: (id: number) => invoke<void>("remove_image", { id }),
   preview: (request: PrintRequest) =>
-    invoke<PreviewPage[]>("preview_layout", { request }),
+    invoke<PreparedLayout>("preview_layout", { request }),
   export: (request: PrintRequest) =>
     invoke<string | null>("export_pdf", { request }),
 };

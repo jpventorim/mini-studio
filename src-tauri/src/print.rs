@@ -7,6 +7,7 @@ use std::{
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use image::{DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits};
+use image_manipulation::{ManipulationOptions, Position, PreparedImage, TrimMode, TrimOptions};
 use image_packing::{DocumentLayout, ImageItem, LayoutOptions, PageSize};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State, async_runtime::spawn_blocking};
@@ -19,7 +20,21 @@ pub(crate) struct PrintState(Arc<Mutex<Workspace>>);
 struct Workspace {
     next_id: u32,
     images: HashMap<u32, Arc<DynamicImage>>,
-    preview: Option<(PrintRequest, Arc<DocumentLayout>)>,
+    preview: Option<(PrintRequest, Arc<PreparedDocument>)>,
+}
+
+struct PreparedSource {
+    image_id: u32,
+    copy_index: usize,
+    quantity: usize,
+    allow_rotation: bool,
+    image: PreparedImage,
+    preview: String,
+}
+
+struct PreparedDocument {
+    sources: Vec<PreparedSource>,
+    layout: DocumentLayout,
 }
 
 impl PrintState {
@@ -182,6 +197,7 @@ pub(crate) struct PrintRequest {
     dpi: f64,
     margin_mm: f64,
     spacing_mm: f64,
+    grid_size_mm: f64,
 }
 
 impl PrintRequest {
@@ -205,8 +221,24 @@ struct PrintItem {
     id: u32,
     quantity: usize,
     allow_rotation: bool,
-    width_mm: f64,
-    height_mm: Option<f64>,
+    size: f64,
+    number_copies: bool,
+    border_px: u32,
+    base_clearance_mm: Option<f64>,
+    artwork_width_ratio: f64,
+    trim: Background,
+    background_color: [u8; 3],
+    alpha_threshold: u8,
+    color_tolerance: u8,
+}
+
+#[derive(Clone, Copy, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum Background {
+    Auto,
+    Alpha,
+    Color,
+    None,
 }
 
 fn sources(
@@ -237,23 +269,138 @@ fn sources(
         .collect()
 }
 
-fn items<'a>(
+fn prepare_sources(
     request: &PrintRequest,
-    sources: &'a [Arc<DynamicImage>],
-) -> Vec<ImageItem<'a, DynamicImage>> {
-    request
-        .items
-        .iter()
-        .zip(sources)
-        .map(|(item, image)| {
-            let source = ImageItem::new(item.id.to_string(), image.as_ref(), item.quantity)
-                .with_rotation(item.allow_rotation);
-            match item.height_mm {
-                Some(height) => source.with_size_mm(item.width_mm, height),
-                None => source.with_width_mm(item.width_mm),
+    sources: &[Arc<DynamicImage>],
+) -> Result<Vec<PreparedSource>, PrintError> {
+    let mut prepared = Vec::new();
+    let mut total_pixels = 0_u64;
+    for (item, source) in request.items.iter().zip(sources) {
+        if ![0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0].contains(&item.size) {
+            return Err(PrintError {
+                message: "Choose size 0.25, 0.5, 1, 2, 3, 4, or 5.".into(),
+                image_id: Some(item.id),
+            });
+        }
+        let options = ManipulationOptions {
+            size: item.size,
+            grid_size_mm: request.grid_size_mm,
+            dpi: request.dpi,
+            position: Position::Grounded,
+            number_copies: item.number_copies,
+            border_px: item.border_px,
+            base_clearance_mm: item.base_clearance_mm,
+            artwork_width_ratio: item.artwork_width_ratio,
+            // Rotation can use either printable dimension as the strip height.
+            max_height_mm: (if item.allow_rotation {
+                request.width_mm.max(request.height_mm)
+            } else {
+                request.height_mm
+            }) - 2.0 * request.margin_mm,
+            trim: TrimOptions {
+                mode: match item.trim {
+                    Background::Auto => TrimMode::Auto,
+                    Background::Alpha => TrimMode::Alpha,
+                    Background::Color => TrimMode::Color(item.background_color),
+                    Background::None => TrimMode::None,
+                },
+                alpha_threshold: item.alpha_threshold,
+                color_tolerance: item.color_tolerance,
+            },
+            ..ManipulationOptions::default()
+        };
+        let source_error = |error: image_manipulation::Error| PrintError {
+            message: error.to_string(),
+            image_id: Some(item.id),
+        };
+        if item.quantity == 0 {
+            return Err(PrintError {
+                message: "Use at least one copy.".into(),
+                image_id: Some(item.id),
+            });
+        }
+        let count = if item.number_copies { item.quantity } else { 1 };
+        let copies = image_manipulation::prepare_copies(source.as_ref(), count, &options)
+            .map_err(source_error)?;
+        for (copy_index, copy) in copies.enumerate() {
+            let image = copy.map_err(source_error)?;
+            total_pixels += u64::from(image.image.width()) * u64::from(image.image.height());
+            if total_pixels > 64 * 1024 * 1024 {
+                return Err(PrintError {
+                    message: "These standees need too much memory. Reduce copies or DPI.".into(),
+                    image_id: Some(item.id),
+                });
             }
+            let mut bytes = Cursor::new(Vec::new());
+            DynamicImage::ImageRgba8(image::imageops::thumbnail(&image.image, 480, 960))
+                .write_to(&mut bytes, ImageFormat::Png)
+                .map_err(|error| PrintError::new(error.to_string()))?;
+            prepared.push(PreparedSource {
+                image_id: item.id,
+                copy_index,
+                quantity: if item.number_copies { 1 } else { item.quantity },
+                allow_rotation: item.allow_rotation,
+                image,
+                preview: format!(
+                    "data:image/png;base64,{}",
+                    STANDARD.encode(bytes.into_inner())
+                ),
+            });
+        }
+    }
+    Ok(prepared)
+}
+
+fn items(sources: &[PreparedSource]) -> Vec<ImageItem<'_, image::RgbaImage>> {
+    sources
+        .iter()
+        .map(|source| {
+            ImageItem::new(
+                source.image_id.to_string(),
+                &source.image.image,
+                source.quantity,
+            )
+            .with_width_mm(source.image.width_mm)
+            .with_rotation(source.allow_rotation)
         })
         .collect()
+}
+
+fn prepared_document(
+    state: &PrintState,
+    request: &PrintRequest,
+) -> Result<Arc<PreparedDocument>, PrintError> {
+    if let Some((_, document)) = state
+        .workspace()?
+        .preview
+        .as_ref()
+        .filter(|(cached, _)| cached == request)
+    {
+        return Ok(Arc::clone(document));
+    }
+    // Prepare first, then pass only pixels and print dimensions to packing.
+    let sources = prepare_sources(request, &sources(state, request)?)?;
+    let layout = image_packing::layout(&items(&sources), &request.options())?;
+    Ok(Arc::new(PreparedDocument { sources, layout }))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PreparedPreview {
+    pages: Vec<PreviewPage>,
+    images: Vec<PreviewImage>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PreviewImage {
+    image_id: u32,
+    preview: String,
+    width_mm: f64,
+    height_mm: f64,
+    copy_number: Option<usize>,
+    base_width_mm: f64,
+    base_depth_mm: f64,
 }
 
 #[derive(Serialize)]
@@ -267,6 +414,7 @@ pub(crate) struct PreviewPage {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PreviewPlacement {
+    source_index: usize,
     image_id: u32,
     copy_index: usize,
     x_mm: f64,
@@ -280,36 +428,56 @@ struct PreviewPlacement {
 pub(crate) async fn preview_layout(
     state: State<'_, PrintState>,
     request: PrintRequest,
-) -> Result<Vec<PreviewPage>, PrintError> {
+) -> Result<PreparedPreview, PrintError> {
     let state = state.inner().clone();
     blocking(move || {
-        let sources = sources(&state, &request)?;
-        let layout = image_packing::layout(&items(&request, &sources), &request.options())?;
-        let pages = layout
-            .pages()
-            .iter()
-            .map(|page| PreviewPage {
-                width_mm: page.size.width_mm,
-                height_mm: page.size.height_mm,
-                placements: page
-                    .placements
-                    .iter()
-                    .map(|placement| PreviewPlacement {
-                        image_id: request.items[placement.source_index].id,
-                        copy_index: placement.copy_index,
-                        x_mm: placement.x_mm,
-                        y_mm: placement.y_mm,
-                        width_mm: placement.width_mm,
-                        height_mm: placement.height_mm,
-                        rotated: placement.rotated,
-                    })
-                    .collect(),
-            })
-            .collect();
-        state.workspace()?.preview = Some((request, Arc::new(layout)));
-        Ok(pages)
+        let document = prepared_document(&state, &request)?;
+        let preview = document_preview(&document);
+        state.workspace()?.preview = Some((request, document));
+        Ok(preview)
     })
     .await
+}
+
+fn document_preview(document: &PreparedDocument) -> PreparedPreview {
+    let pages = document
+        .layout
+        .pages()
+        .iter()
+        .map(|page| PreviewPage {
+            width_mm: page.size.width_mm,
+            height_mm: page.size.height_mm,
+            placements: page
+                .placements
+                .iter()
+                .map(|placement| PreviewPlacement {
+                    source_index: placement.source_index,
+                    image_id: document.sources[placement.source_index].image_id,
+                    copy_index: document.sources[placement.source_index].copy_index
+                        + placement.copy_index,
+                    x_mm: placement.x_mm,
+                    y_mm: placement.y_mm,
+                    width_mm: placement.width_mm,
+                    height_mm: placement.height_mm,
+                    rotated: placement.rotated,
+                })
+                .collect(),
+        })
+        .collect();
+    let images = document
+        .sources
+        .iter()
+        .map(|source| PreviewImage {
+            image_id: source.image_id,
+            preview: source.preview.clone(),
+            width_mm: source.image.width_mm,
+            height_mm: source.image.height_mm,
+            copy_number: source.image.copy_number,
+            base_width_mm: f64::from(source.image.base_bounds.width) * 25.4 / source.image.dpi,
+            base_depth_mm: f64::from(source.image.base_bounds.height) * 25.4 / source.image.dpi,
+        })
+        .collect();
+    PreparedPreview { pages, images }
 }
 
 #[tauri::command]
@@ -320,18 +488,8 @@ pub(crate) async fn export_pdf(
 ) -> Result<Option<String>, PrintError> {
     let state = state.inner().clone();
     blocking(move || {
-        let sources = sources(&state, &request)?;
-        let items = items(&request, &sources);
-        let cached = state
-            .workspace()?
-            .preview
-            .as_ref()
-            .filter(|(input, _)| input == &request)
-            .map(|(_, layout)| Arc::clone(layout));
-        let layout = match cached {
-            Some(layout) => layout,
-            None => Arc::new(image_packing::layout(&items, &request.options())?),
-        };
+        let document = prepared_document(&state, &request)?;
+        let items = items(&document.sources);
         let Some(path) = app
             .dialog()
             .file()
@@ -345,7 +503,7 @@ pub(crate) async fn export_pdf(
         let path = path
             .into_path()
             .map_err(|error| PrintError::new(error.to_string()))?;
-        save_pdf(&path, &items, &layout)?;
+        save_pdf(&path, &items, &document.layout)?;
         Ok(Some(path.to_string_lossy().into_owned()))
     })
     .await
@@ -353,7 +511,7 @@ pub(crate) async fn export_pdf(
 
 fn save_pdf(
     path: &Path,
-    items: &[ImageItem<'_, DynamicImage>],
+    items: &[ImageItem<'_, image::RgbaImage>],
     layout: &DocumentLayout,
 ) -> Result<(), PrintError> {
     let pdf = image_packing::render_pdf(items, layout)?;
@@ -381,43 +539,189 @@ async fn blocking<T: Send + 'static>(
 mod tests {
     use super::*;
 
-    #[test]
-    fn imported_image_can_be_packed_and_saved_without_touching_the_source() {
-        let folder = tempfile::tempdir().unwrap();
-        let source = folder.path().join("token.png");
-        DynamicImage::new_rgba8(600, 300).save(&source).unwrap();
-        let original = std::fs::read(&source).unwrap();
-        let state = PrintState::default();
-        let imported = load_images(&state, vec![source.clone()]).unwrap();
-        assert!(imported.errors.is_empty());
-        let image = &imported.images[0];
-        assert_eq!((image.width, image.height), (600, 300));
-        assert!(image.preview.starts_with("data:image/png;base64,"));
+    fn item(id: u32, quantity: usize, numbered: bool) -> PrintItem {
+        PrintItem {
+            id,
+            quantity,
+            allow_rotation: true,
+            size: 1.0,
+            number_copies: numbered,
+            border_px: 3,
+            base_clearance_mm: None,
+            artwork_width_ratio: 0.9,
+            trim: Background::Auto,
+            background_color: [255; 3],
+            alpha_threshold: 0,
+            color_tolerance: 8,
+        }
+    }
 
-        let request = PrintRequest {
-            items: vec![PrintItem {
-                id: image.id,
-                quantity: 2,
-                allow_rotation: false,
-                width_mm: 50.8,
-                height_mm: Some(30.0),
-            }],
+    fn make_request(items: Vec<PrintItem>) -> PrintRequest {
+        PrintRequest {
+            items,
             width_mm: 210.0,
             height_mm: 297.0,
-            dpi: 300.0,
-            margin_mm: 5.0,
-            spacing_mm: 2.0,
-        };
-        let sources = sources(&state, &request).unwrap();
-        let items = items(&request, &sources);
-        assert!(!items[0].allow_rotation);
-        let layout = image_packing::layout(&items, &request.options()).unwrap();
-        assert_eq!(layout.pages()[0].placements.len(), 2);
-        assert_eq!(layout.pages()[0].placements[0].height_mm, 30.0);
+            dpi: 100.0,
+            margin_mm: 2.0,
+            spacing_mm: 0.0,
+            grid_size_mm: 25.0,
+        }
+    }
+
+    fn source() -> DynamicImage {
+        DynamicImage::ImageRgba8(image::RgbaImage::from_pixel(
+            20,
+            40,
+            image::Rgba([80, 20, 150, 255]),
+        ))
+    }
+
+    #[test]
+    fn imported_image_is_prepared_then_packed_and_saved_without_touching_the_source() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("token.png");
+        source().save(&path).unwrap();
+        let original = std::fs::read(&path).unwrap();
+        let state = PrintState::default();
+        let imported = load_images(&state, vec![path.clone()]).unwrap();
+        assert!(imported.errors.is_empty());
+        let image = &imported.images[0];
+        let request = make_request(vec![item(image.id, 2, false)]);
+        let document = prepared_document(&state, &request).unwrap();
+        assert_eq!(document.sources.len(), 1);
+        let prepared = &document.sources[0].image;
+        assert_eq!(prepared.image.get_pixel(0, 0), &image::Rgba([0, 0, 0, 255]));
+        assert!(prepared.height_mm > 91.0);
+        for y in 0..prepared.image.height() {
+            for x in 0..prepared.image.width() {
+                assert_eq!(
+                    prepared.image.get_pixel(x, y),
+                    prepared.image.get_pixel(x, prepared.image.height() - 1 - y)
+                );
+            }
+        }
+        let packing_items = items(&document.sources);
+        assert_eq!(document.layout.pages()[0].placements.len(), 2);
+        assert_eq!(packing_items[0].width_mm, Some(prepared.width_mm));
+        assert!(
+            document.sources[0]
+                .preview
+                .starts_with("data:image/png;base64,")
+        );
         let destination = folder.path().join("sheet.pdf");
-        std::fs::write(&destination, b"previous file").unwrap();
-        save_pdf(&destination, &items, &layout).unwrap();
+        save_pdf(&destination, &packing_items, &document.layout).unwrap();
         assert!(std::fs::read(destination).unwrap().starts_with(b"%PDF-"));
-        assert_eq!(std::fs::read(source).unwrap(), original);
+        assert_eq!(std::fs::read(path).unwrap(), original);
+        state.workspace().unwrap().preview = Some((request, Arc::clone(&document)));
+        // The same prepared pixels and layout can be reused for export.
+        let same_request = make_request(vec![item(image.id, 2, false)]);
+        assert!(Arc::ptr_eq(
+            &document,
+            &prepared_document(&state, &same_request).unwrap()
+        ));
+    }
+
+    #[test]
+    fn numbered_sources_restart_and_every_copy_reaches_packing() {
+        let request = make_request(vec![item(10, 4, true), item(20, 3, true)]);
+        let sources = vec![Arc::new(source()), Arc::new(source())];
+        let prepared = prepare_sources(&request, &sources).unwrap();
+        assert_eq!(
+            prepared
+                .iter()
+                .map(|s| (s.image_id, s.image.copy_number))
+                .collect::<Vec<_>>(),
+            vec![
+                (10, Some(1)),
+                (10, Some(2)),
+                (10, Some(3)),
+                (10, Some(4)),
+                (20, Some(1)),
+                (20, Some(2)),
+                (20, Some(3))
+            ]
+        );
+        assert!(prepared.iter().all(|s| s.quantity == 1));
+        let items = items(&prepared);
+        let layout = image_packing::layout(&items, &request.options()).unwrap();
+        assert_eq!(
+            layout
+                .pages()
+                .iter()
+                .map(|p| p.placements.len())
+                .sum::<usize>(),
+            7
+        );
+        let pdf = image_packing::render_pdf(&items, &layout).unwrap();
+        assert!(pdf.starts_with(b"%PDF-"));
+        let document = PreparedDocument {
+            sources: prepared,
+            layout,
+        };
+        let preview = document_preview(&document);
+        assert_eq!(preview.images.len(), 7);
+        let mut actual_copies = Vec::new();
+        for page in &preview.pages {
+            for placement in &page.placements {
+                let image = &preview.images[placement.source_index];
+                assert_eq!(image.image_id, placement.image_id);
+                assert_eq!(image.copy_number, Some(placement.copy_index + 1));
+                actual_copies.push((placement.image_id, placement.copy_index));
+            }
+        }
+        actual_copies.sort_unstable();
+        assert_eq!(
+            actual_copies,
+            vec![
+                (10, 0),
+                (10, 1),
+                (10, 2),
+                (10, 3),
+                (20, 0),
+                (20, 1),
+                (20, 2)
+            ]
+        );
+    }
+
+    #[test]
+    fn application_accepts_only_the_supported_size_categories() {
+        let sources = vec![Arc::new(source())];
+        for size in [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0] {
+            let mut request = make_request(vec![item(10, 1, false)]);
+            request.items[0].size = size;
+            assert!(prepare_sources(&request, &sources).is_ok());
+        }
+        for size in [0.0, 0.75, 1.5, 4.5, 6.0] {
+            let mut request = make_request(vec![item(10, 1, false)]);
+            request.items[0].size = size;
+            let error = prepare_sources(&request, &sources).err().unwrap();
+            assert_eq!(error.image_id, Some(10));
+        }
+    }
+
+    #[test]
+    fn preparation_reports_source_errors_and_respects_printable_paper() {
+        let mut request = make_request(vec![item(10, 1, false)]);
+        request.items[0].size = 3.0;
+        let sources = vec![Arc::new(source())];
+        let capped = prepare_sources(&request, &sources).unwrap();
+        assert!(capped[0].image.height_mm <= 293.0);
+        assert!(capped[0].image.width_mm > 73.0);
+        request.height_mm = 8.0;
+        request.items[0].allow_rotation = false;
+        let error = prepare_sources(&request, &sources).err().unwrap();
+        assert_eq!(error.image_id, Some(10));
+        request.items[0].size = 3.0;
+        request.items[0].allow_rotation = true;
+        request.width_mm = 420.0;
+        request.height_mm = 594.0;
+        assert!(prepare_sources(&request, &sources).is_ok());
+        request.items[0].size = 1.0;
+        request.items[0].border_px = u32::MAX;
+        assert!(prepare_sources(&request, &sources).is_err());
+        request.items[0].border_px = 3;
+        request.items[0].quantity = 0;
+        assert!(prepare_sources(&request, &sources).is_err());
     }
 }

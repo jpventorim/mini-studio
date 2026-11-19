@@ -327,7 +327,10 @@ body {
 
 .preview-message {
   position: absolute;
-  z-index: 1;
+  z-index: 30;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   top: var(--panel-top);
   left: 50%;
   transform: translateX(-50%);
@@ -340,6 +343,16 @@ body {
   background: var(--rf-paper);
   font-size: 0.875rem;
   overflow-wrap: anywhere;
+}
+
+.preview-message .rf-notice-text {
+  min-width: 0;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.preview-message .rf-button {
+  flex-shrink: 0;
 }
 
 .preview-updating {
