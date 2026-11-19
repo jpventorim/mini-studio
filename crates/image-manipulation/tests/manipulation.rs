@@ -172,6 +172,74 @@ fn numbering_is_optional_and_single_image_preparation_starts_at_one() {
 }
 
 #[test]
+fn quarter_size_numbered_copies_fit_their_sections_on_both_grids() {
+    let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
+    for grid_size_mm in [20.0, 25.0] {
+        for dpi in [300.0, 600.0] {
+            let options = ManipulationOptions {
+                size: 0.25,
+                grid_size_mm,
+                dpi,
+                border_px: 3,
+                number_copies: true,
+                ..Default::default()
+            };
+            let blank = prepare(
+                &source,
+                &ManipulationOptions {
+                    number_copies: false,
+                    ..options.clone()
+                },
+            )
+            .unwrap();
+            let single = prepare(&source, &options).expect("quarter-size number 1 should fit");
+            for (index, copy) in prepare_copies(&source, 12, &options).unwrap().enumerate() {
+                let copy =
+                    copy.expect("quarter-size copies, including multi-digit numbers, should fit");
+                assert_eq!(copy.copy_number, Some(index + 1));
+                assert_eq!(copy.image.dimensions(), blank.image.dimensions());
+                assert_eq!(
+                    (copy.width_mm, copy.height_mm),
+                    (blank.width_mm, blank.height_mm)
+                );
+                if index == 0 {
+                    assert_eq!(copy.image, single.image);
+                }
+                let base = copy.base_bounds;
+                let mut label_pixels = 0;
+                let mut min_x = u32::MAX;
+                let mut max_x = 0;
+                let mut min_y = u32::MAX;
+                let mut max_y = 0;
+                for (x, y, pixel) in copy.image.enumerate_pixels() {
+                    assert_eq!(pixel, copy.image.get_pixel(x, copy.image.height() - 1 - y));
+                    if y >= copy.fold_y && pixel != blank.image.get_pixel(x, y) {
+                        label_pixels += 1;
+                        assert!(x > base.x && x < base.x + base.width - 1);
+                        assert!(y > base.y && y < base.y + base.height / 2);
+                        min_x = min_x.min(x);
+                        max_x = max_x.max(x);
+                        min_y = min_y.min(y);
+                        max_y = max_y.max(y);
+                    }
+                }
+                assert!(label_pixels > 0, "the copy must contain a visible number");
+                assert!(max_y - min_y + 1 >= 8);
+                assert!((min_x - base.x).abs_diff(base.x + base.width - max_x - 1) <= 2);
+                assert!((min_y - base.y - 1).abs_diff(base.y + base.height / 2 - max_y - 1) <= 2);
+                // Numbering must not alter the image's 1 mm cutting inset.
+                let inset = (copy.dpi / 25.4).ceil() as u32;
+                assert!(copy.artwork_bounds.x >= inset);
+                assert!(
+                    copy.base_bounds.y - copy.artwork_bounds.y - copy.artwork_bounds.height
+                        >= inset
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn multi_digit_labels_work_at_small_and_large_sizes_without_hiding_unreadable_labels() {
     let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
     for size in [0.5, 1.0, 2.0, 4.0] {
@@ -190,7 +258,7 @@ fn multi_digit_labels_work_at_small_and_large_sizes_without_hiding_unreadable_la
             assert!(copies.next().is_none());
         }
     }
-    for (size, dpi) in [(0.25, 300.0), (1.0, 10.0)] {
+    for (size, dpi) in [(0.25, 72.0), (1.0, 10.0)] {
         let mut options = ManipulationOptions {
             size,
             dpi,

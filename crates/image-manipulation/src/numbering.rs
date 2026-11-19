@@ -11,19 +11,30 @@ pub(crate) fn draw(output: &mut PreparedImage, number: usize) -> Result<(), Erro
         .map_err(|_| Error::InvalidInput("cannot read the bundled numbering font"))?;
     let text = number.to_string();
     let ppm = output.dpi / 25.4;
-    let inset = ppm.ceil() as u32;
+    let standard_inset = ppm.ceil() as u32;
     let base = output.base_bounds;
-    // Exclude the join and midpoint strokes, then retain a full 1 mm inset.
-    let area_width = base.width.saturating_sub(2 * inset);
     let numbered_depth = if output.base_has_flap {
         base.height / 2
     } else {
         base.height
     };
+    // Quarter-size sections cannot hold a 2.5 mm digit plus two 1 mm insets.
+    // Adapt only the label inset; the artwork's cutting space is unchanged.
+    let compact =
+        numbered_depth.saturating_sub(2 * standard_inset + 1) < (2.5 * ppm).ceil() as u32 + 1;
+    let inset = if compact {
+        standard_inset
+            .min((f64::from(numbered_depth) * 0.1).ceil() as u32)
+            .max(1)
+    } else {
+        standard_inset
+    };
+    // Exclude the join and midpoint strokes, retaining space on every side.
+    let area_width = base.width.saturating_sub(2 * inset);
     let area_height = numbered_depth.saturating_sub(2 * inset + 1);
     let too_small = || {
         Error::InvalidInput(
-            "copy number needs more base space or DPI: keep 1 mm insets and at least 2.5 mm / 8 pixels of digit height",
+            "copy number is too small to render clearly; increase the base size or DPI",
         )
     };
     if area_width <= 2 || area_height <= 2 {
@@ -49,7 +60,7 @@ pub(crate) fn draw(output: &mut PreparedImage, number: usize) -> Result<(), Erro
     let height = top - bottom;
     let factor = ((area_width - 1) as f32 / (right - left)).min((area_height - 1) as f32 / height);
     let digit_height = height * factor;
-    if digit_height < (2.5 * ppm) as f32 || digit_height < 8.0 {
+    if digit_height < 8.0 || (!compact && digit_height < (2.5 * ppm) as f32) {
         return Err(too_small());
     }
     let scaled = font.as_scaled(factor * font.height_unscaled());

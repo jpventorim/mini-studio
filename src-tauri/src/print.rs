@@ -685,6 +685,45 @@ mod tests {
     }
 
     #[test]
+    fn quarter_size_numbered_images_reach_preview_and_pdf_on_both_grids() {
+        for grid_size_mm in [20.0, 25.0] {
+            let state = PrintState::default();
+            state
+                .workspace()
+                .unwrap()
+                .images
+                .insert(10, Arc::new(source()));
+            let mut request = make_request(vec![item(10, 12, true)]);
+            request.items[0].size = 0.25;
+            request.grid_size_mm = grid_size_mm;
+            request.dpi = 300.0;
+            let document = prepared_document(&state, &request)
+                .expect("quarter-size numbered standees should prepare and pack");
+            let preview = document_preview(&document);
+            assert_eq!(preview.images.len(), 12);
+            assert_eq!(
+                preview
+                    .pages
+                    .iter()
+                    .map(|page| page.placements.len())
+                    .sum::<usize>(),
+                12
+            );
+            assert_eq!(
+                preview
+                    .images
+                    .iter()
+                    .map(|image| image.copy_number)
+                    .collect::<Vec<_>>(),
+                (1..=12).map(Some).collect::<Vec<_>>()
+            );
+            let pdf =
+                image_packing::render_pdf(&items(&document.sources), &document.layout).unwrap();
+            assert!(pdf.starts_with(b"%PDF-"));
+        }
+    }
+
+    #[test]
     fn application_accepts_only_the_supported_size_categories() {
         let sources = vec![Arc::new(source())];
         for size in [0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0] {

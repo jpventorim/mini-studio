@@ -465,7 +465,8 @@ where
 /// Copies of one prepared source, generated one at a time to bound memory use.
 ///
 /// Each call to [`prepare_copies`] starts numbering at 1. Items return an error
-/// if a number cannot fit with a 1 mm inset at a legible size and resolution.
+/// if a number cannot fit at a legible resolution. Number insets adapt to small
+/// sections; the artwork's 1 mm cutting inset is unchanged.
 pub struct PreparedCopies {
     source: PreparedImage,
     quantity: usize,

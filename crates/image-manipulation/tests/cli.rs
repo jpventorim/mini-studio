@@ -10,7 +10,7 @@ fn cli_writes_numbered_copies_and_restarts_for_each_input() {
     RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]))
         .save(&input)
         .unwrap();
-    for (name, quantity) in [("first", 4), ("second", 3)] {
+    for (name, quantity, size) in [("first", 4, 1.0), ("second", 3, 1.0), ("quarter", 12, 0.25)] {
         let output = dir.path().join(format!("{name}.png"));
         let result = Command::new(env!("CARGO_BIN_EXE_image-manipulation"))
             .arg("--input")
@@ -18,6 +18,7 @@ fn cli_writes_numbered_copies_and_restarts_for_each_input() {
             .arg("--output")
             .arg(&output)
             .args(["--copies", &quantity.to_string(), "--number-copies"])
+            .args(["--size", &size.to_string()])
             .output()
             .unwrap();
         assert!(
@@ -32,6 +33,7 @@ fn cli_writes_numbered_copies_and_restarts_for_each_input() {
                 .to_rgba8();
             let source = image::open(&input).unwrap();
             let options = image_manipulation::ManipulationOptions {
+                size,
                 number_copies: true,
                 ..Default::default()
             };

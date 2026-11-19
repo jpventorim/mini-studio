@@ -45,8 +45,8 @@ Raster operations use whole pixels.
    transparency in the artwork panel and its clean inset.
 10. **Draw base lines and optional numbers.** Add a one-pixel black line at the
     artwork join, plus a midpoint line below size 4. When numbering is
-    enabled, center and scale the copy number to fill its base section, keeping
-    the 1 mm inset.
+    enabled, center and scale the copy number to fill its base section. Number
+    padding adapts for compact sections.
 11. **Create the mirrored pair and center fold.** Reflect the completed half
     vertically above the upright half, including its base tab and divider lines.
     Add a symmetric two-row black center-fold mark outside the clean insets.
@@ -146,10 +146,13 @@ Numbers use bundled **Atkinson Hyperlegible Bold**, black on white, centered in
 the numbered section of each tab. The font was designed for readers with low vision
 ([Braille Institute](https://www.brailleinstitute.org/about-us/news/braille-institute-launches-enhanced-atkinson-hyperlegible-font-to-make-reading-easier/)).
 Numbers scale proportionally to fill as much of the section as possible,
-preserving a 1 mm inset from edges and fold lines. There is no fixed font-size cap.
-Labels below 2.5 mm or 8 pixels high return an error. The shallow bases at
-size 0.25 may be too small for numbering with the 1 mm inset. No font installation is
-needed; the font's SIL Open Font License is in `assets/fonts/OFL.txt`.
+using a 1 mm inset in normal sections. Compact sections, such as size 0.25,
+use padding of 10% of section depth, capped at 1 mm and rounded up to at least
+one pixel. Their digits can be smaller than 2.5 mm, but must remain at least
+8 pixels high. Increase DPI if a compact label cannot fit. The artwork retains
+its separate 1 mm cutting inset. There is no fixed font-size cap.
+No font installation is needed; the font's SIL Open Font License is in
+`assets/fonts/OFL.txt`.
 
 ```sh
 cargo run -p image-manipulation --features cli -- \
