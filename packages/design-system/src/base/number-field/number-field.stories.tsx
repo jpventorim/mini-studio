@@ -26,6 +26,7 @@ function Fields() {
       />
       <NumberField
         label="Width"
+        keyboardStep={0.5}
         unit="mm"
         min={0.1}
         max={200}

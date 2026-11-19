@@ -247,6 +247,7 @@ function App() {
                     label="Margin"
                     unit="mm"
                     value={settings.marginMm}
+                    keyboardStep={0.5}
                     min={0}
                     max={100}
                     onChange={(marginMm) => updateSettings({ marginMm })}
@@ -255,6 +256,7 @@ function App() {
                     label="Spacing"
                     unit="mm"
                     value={settings.spacingMm}
+                    keyboardStep={0.5}
                     min={0}
                     max={100}
                     onChange={(spacingMm) => updateSettings({ spacingMm })}

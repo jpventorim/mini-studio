@@ -15,6 +15,7 @@ export function NumberField({
   onChange,
   unit,
   step,
+  keyboardStep = step,
   integer = false,
   labelLayout = "above",
 }: {
@@ -25,6 +26,8 @@ export function NumberField({
   onChange: (value: number) => void;
   unit?: string;
   step?: number;
+  /** Arrow-key increment; defaults to the button step when provided. */
+  keyboardStep?: number;
   integer?: boolean;
   labelLayout?: "above" | "inline" | "hidden";
 }) {
@@ -100,6 +103,16 @@ export function NumberField({
             onBlur={() => setDraft(undefined)}
             onKeyDown={(event) => {
               if (event.key === "Enter") event.currentTarget.blur();
+              if (
+                keyboardStep !== undefined &&
+                keyboardStep > 0 &&
+                (event.key === "ArrowUp" || event.key === "ArrowDown")
+              ) {
+                event.preventDefault();
+                increment(
+                  event.key === "ArrowUp" ? keyboardStep : -keyboardStep,
+                );
+              }
             }}
           />
           {unit && <span id={`${id}-unit`}>{unit}</span>}
