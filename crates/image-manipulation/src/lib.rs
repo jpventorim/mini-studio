@@ -20,6 +20,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod numbering;
 mod trim;
 pub use trim::{TrimMode, TrimOptions, TrimmedImage, trim};
 
@@ -76,6 +77,9 @@ impl Position {
 /// Physical sizing and trimming options.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ManipulationOptions {
+    /// Number copies from 1 for each source; defaults to false.
+    /// Use [`prepare_copies`] for quantities. [`prepare`] labels a single copy 1.
+    pub number_copies: bool,
     /// Grid multiplier: 1 means a nominal 25 mm footprint with the default grid.
     pub size: f64,
     /// Millimetres per grid unit; defaults to 25.
@@ -103,6 +107,7 @@ pub struct ManipulationOptions {
 impl Default for ManipulationOptions {
     fn default() -> Self {
         Self {
+            number_copies: false,
             size: 1.0,
             grid_size_mm: 25.0,
             base_clearance_mm: None,
@@ -119,6 +124,8 @@ impl Default for ManipulationOptions {
 /// Prepared RGBA pixels and physical dimensions suitable for `image-packing`.
 #[derive(Debug, Clone)]
 pub struct PreparedImage {
+    /// Number printed on both base tabs, or `None` when numbering is disabled.
+    pub copy_number: Option<usize>,
     /// Mirrored pair: flipped base and artwork above upright artwork and base.
     pub image: RgbaImage,
     /// Actual base width after subtracting clearance, in millimetres.
@@ -362,7 +369,8 @@ where
             output.put_pixel(x, y, Rgba([0, 0, 0, 255]));
         }
     }
-    Ok(PreparedImage {
+    let mut result = PreparedImage {
+        copy_number: None,
         width_mm,
         height_mm,
         dpi: f64::from(base_width) * 25.4 / width_mm,
@@ -381,5 +389,88 @@ where
         },
         fold_y: half_height,
         image: output,
+    };
+    if options.number_copies {
+        numbering::draw(&mut result, 1)?;
+    }
+    Ok(result)
+}
+
+/// Copies of one prepared source, generated one at a time to bound memory use.
+///
+/// Each call to [`prepare_copies`] starts numbering at 1. Items return an error
+/// if a number cannot fit with a 1 mm inset at a legible size and resolution.
+pub struct PreparedCopies {
+    source: PreparedImage,
+    quantity: usize,
+    next: usize,
+    numbered: bool,
+}
+
+impl Iterator for PreparedCopies {
+    type Item = Result<PreparedImage, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next == self.quantity {
+            return None;
+        }
+        self.next += 1;
+        let mut copy = self.source.clone();
+        if self.numbered
+            && let Err(error) = numbering::draw(&mut copy, self.next)
+        {
+            return Some(Err(error));
+        }
+        Some(Ok(copy))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.quantity - self.next;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for PreparedCopies {}
+impl std::iter::FusedIterator for PreparedCopies {}
+
+/// Prepare one source once, then yield its copies with independent numbering.
+///
+/// Numbers appear in the inner half of each base tab. Numbering restarts at 1
+/// on every call, even if another source was prepared previously.
+///
+/// # Examples
+/// ```
+/// use image::{Rgba, RgbaImage};
+/// use image_manipulation::{ManipulationOptions, prepare_copies};
+/// let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
+/// let options = ManipulationOptions { number_copies: true, ..Default::default() };
+/// for (index, copy) in prepare_copies(&source, 4, &options)?.enumerate() {
+///     assert_eq!(copy?.copy_number, Some(index + 1));
+/// }
+/// # Ok::<(), image_manipulation::Error>(())
+/// ```
+///
+/// # Errors
+/// Returns the same preparation errors as [`prepare`], or rejects zero copies.
+/// Individual copies can also fail if their number cannot fit legibly.
+pub fn prepare_copies<I>(
+    image: &I,
+    quantity: usize,
+    options: &ManipulationOptions,
+) -> Result<PreparedCopies, Error>
+where
+    I: GenericImageView + ?Sized,
+    I::Pixel: Pixel<Subpixel = u8>,
+{
+    if quantity == 0 {
+        return Err(Error::InvalidInput("quantity must be positive"));
+    }
+    let mut unnumbered = options.clone();
+    unnumbered.number_copies = false;
+    Ok(PreparedCopies {
+        source: prepare(image, &unnumbered)?,
+        quantity,
+        next: 0,
+        numbered: options.number_copies,
     })
 }

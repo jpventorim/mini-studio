@@ -1,6 +1,7 @@
 use image::{DynamicImage, Rgb, RgbImage, Rgba, RgbaImage};
 use image_manipulation::{
-    Error, ManipulationOptions, PixelRect, Position, TrimMode, TrimOptions, prepare, trim,
+    Error, ManipulationOptions, PixelRect, Position, TrimMode, TrimOptions, prepare,
+    prepare_copies, trim,
 };
 
 #[test]
@@ -22,6 +23,117 @@ fn trims_transparency_without_discarding_white_foreground() {
         }
     );
     assert!(output.image.pixels().all(|p| *p == Rgba([255; 4])));
+}
+
+#[test]
+fn copy_numbers_restart_for_each_source_and_only_change_the_base_tabs() {
+    let options = ManipulationOptions {
+        number_copies: true,
+        ..Default::default()
+    };
+    for (color, quantity) in [([80, 20, 150, 255], 4), ([20, 150, 80, 255], 3)] {
+        let source = RgbaImage::from_pixel(10, 20, Rgba(color));
+        let blank = prepare(&source, &ManipulationOptions::default()).unwrap();
+        let copies = prepare_copies(&source, quantity, &options).unwrap();
+        assert_eq!(copies.len(), quantity);
+        let mut previous = None;
+        for (index, copy) in copies.enumerate() {
+            let copy = copy.unwrap();
+            assert_eq!(copy.copy_number, Some(index + 1));
+            assert_eq!(copy.image.dimensions(), blank.image.dimensions());
+            assert_eq!(
+                (copy.width_mm, copy.height_mm),
+                (blank.width_mm, blank.height_mm)
+            );
+            let base = copy.base_bounds;
+            let inset = (copy.dpi / 25.4).ceil() as u32;
+            let mut changed = 0;
+            for (x, y, pixel) in copy.image.enumerate_pixels() {
+                assert_eq!(pixel, copy.image.get_pixel(x, copy.image.height() - 1 - y));
+                if pixel != blank.image.get_pixel(x, y) && y >= copy.fold_y {
+                    changed += 1;
+                    assert!(x >= inset && x < base.width - inset);
+                    assert!(y >= base.y + 1 + inset);
+                    assert!(y < base.y + base.height / 2 - inset);
+                    assert_eq!(pixel[3], 255);
+                    assert_eq!(pixel[0], pixel[1]);
+                    assert_eq!(pixel[1], pixel[2]);
+                }
+            }
+            assert!(changed > 0);
+            if let Some(previous) = previous {
+                assert_ne!(copy.image, previous);
+            }
+            previous = Some(copy.image);
+        }
+    }
+}
+
+#[test]
+fn numbering_is_optional_and_single_image_preparation_starts_at_one() {
+    let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
+    let options = ManipulationOptions::default();
+    let blank = prepare(&source, &options).unwrap();
+    assert_eq!(blank.copy_number, None);
+    for copy in prepare_copies(&source, 3, &options).unwrap() {
+        let copy = copy.unwrap();
+        assert_eq!(copy.copy_number, None);
+        assert_eq!(copy.image, blank.image);
+    }
+    let numbered = ManipulationOptions {
+        number_copies: true,
+        ..options
+    };
+    let single = prepare(&source, &numbered).unwrap();
+    let first = prepare_copies(&source, 4, &numbered)
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap();
+    assert_eq!(single.copy_number, Some(1));
+    assert_eq!(single.image, first.image);
+    assert!(matches!(
+        prepare_copies(&source, 0, &numbered),
+        Err(Error::InvalidInput(_))
+    ));
+}
+
+#[test]
+fn multi_digit_labels_work_at_small_and_large_sizes_without_hiding_unreadable_labels() {
+    let source = RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]));
+    for size in [0.5, 1.0, 2.0] {
+        for dpi in [72.0, 300.0, 600.0] {
+            let options = ManipulationOptions {
+                size,
+                dpi,
+                number_copies: true,
+                ..Default::default()
+            };
+            let mut copies = prepare_copies(&source, 12, &options).unwrap();
+            assert_eq!(copies.len(), 12);
+            let last = copies.nth(11).unwrap().unwrap();
+            assert_eq!(last.copy_number, Some(12));
+            assert_eq!(copies.len(), 0);
+            assert!(copies.next().is_none());
+        }
+    }
+    for (size, dpi) in [(0.25, 300.0), (1.0, 10.0)] {
+        let mut options = ManipulationOptions {
+            size,
+            dpi,
+            ..Default::default()
+        };
+        assert!(prepare(&source, &options).is_ok());
+        options.number_copies = true;
+        assert!(matches!(
+            prepare(&source, &options),
+            Err(Error::InvalidInput(_))
+        ));
+        assert!(matches!(
+            prepare_copies(&source, 1, &options).unwrap().next(),
+            Some(Err(Error::InvalidInput(_)))
+        ));
+    }
 }
 
 #[test]

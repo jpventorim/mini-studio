@@ -4,6 +4,62 @@ use image::{Rgb, RgbImage, Rgba, RgbaImage};
 use std::process::Command;
 
 #[test]
+fn cli_writes_numbered_copies_and_restarts_for_each_input() {
+    let dir = tempfile::tempdir().unwrap();
+    let input = dir.path().join("source.png");
+    RgbaImage::from_pixel(10, 20, Rgba([80, 20, 150, 255]))
+        .save(&input)
+        .unwrap();
+    for (name, quantity) in [("first", 4), ("second", 3)] {
+        let output = dir.path().join(format!("{name}.png"));
+        let result = Command::new(env!("CARGO_BIN_EXE_image-manipulation"))
+            .arg("--input")
+            .arg(&input)
+            .arg("--output")
+            .arg(&output)
+            .args(["--copies", &quantity.to_string(), "--number-copies"])
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(!output.exists());
+        for index in 1..=quantity {
+            let png = image::open(dir.path().join(format!("{name}-{index}.png")))
+                .unwrap()
+                .to_rgba8();
+            let source = image::open(&input).unwrap();
+            let options = image_manipulation::ManipulationOptions {
+                number_copies: true,
+                ..Default::default()
+            };
+            let expected = image_manipulation::prepare_copies(&source, quantity, &options)
+                .unwrap()
+                .nth(index - 1)
+                .unwrap()
+                .unwrap();
+            assert_eq!(png, expected.image);
+        }
+    }
+    assert_eq!(
+        std::fs::read(dir.path().join("first-1.png")).unwrap(),
+        std::fs::read(dir.path().join("second-1.png")).unwrap()
+    );
+    let result = Command::new(env!("CARGO_BIN_EXE_image-manipulation"))
+        .arg("--input")
+        .arg(&input)
+        .arg("--output")
+        .arg(dir.path().join("invalid.png"))
+        .args(["--copies", "0", "--number-copies"])
+        .output()
+        .unwrap();
+    assert!(!result.status.success());
+    assert!(!dir.path().join("invalid.png").exists());
+}
+
+#[test]
 fn cli_writes_a_symmetric_png_with_physical_size_metadata() {
     let dir = tempfile::tempdir().unwrap();
     let input = dir.path().join("source image.png");

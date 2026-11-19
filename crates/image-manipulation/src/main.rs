@@ -1,9 +1,13 @@
 use anyhow::{Context, Result};
 use clap::{Parser, ValueEnum};
 use image_manipulation::{
-    BaseShape, ManipulationOptions, Position, TrimMode, TrimOptions, prepare,
+    BaseShape, ManipulationOptions, Position, PreparedImage, TrimMode, TrimOptions, prepare_copies,
 };
-use std::{path::PathBuf, process::ExitCode};
+use std::{
+    num::NonZeroUsize,
+    path::{Path, PathBuf},
+    process::ExitCode,
+};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Background {
@@ -37,6 +41,12 @@ struct Args {
     /// Destination RGBA PNG, including physical-resolution metadata.
     #[arg(short, long)]
     output: PathBuf,
+    /// Copies of this source; multiple outputs use name-1.png, name-2.png, etc.
+    #[arg(long, default_value = "1")]
+    copies: NonZeroUsize,
+    /// Print copy numbers on both base tabs, starting at 1 for this source.
+    #[arg(long)]
+    number_copies: bool,
     /// Base width as a multiplier of the grid size.
     #[arg(long, default_value_t = 1.0)]
     size: f64,
@@ -104,9 +114,11 @@ fn run(args: Args) -> Result<()> {
             Background::White => TrimMode::Color([255, 255, 255]),
             Background::None => TrimMode::None,
         });
-    let result = prepare(
+    let copies = prepare_copies(
         &source,
+        args.copies.get(),
         &ManipulationOptions {
+            number_copies: args.number_copies,
             size: args.size,
             grid_size_mm: args.grid_size_mm,
             base_clearance_mm: args.base_clearance_mm,
@@ -128,6 +140,24 @@ fn run(args: Args) -> Result<()> {
             },
         },
     )?;
+    for (index, result) in copies.enumerate() {
+        let output = if args.copies.get() == 1 {
+            args.output.clone()
+        } else {
+            let stem = args
+                .output
+                .file_stem()
+                .context("output needs a file name")?;
+            let mut name = stem.to_os_string();
+            name.push(format!("-{}.png", index + 1));
+            args.output.with_file_name(name)
+        };
+        save_png(&result?, &output)?;
+    }
+    Ok(())
+}
+
+fn save_png(result: &PreparedImage, output: &Path) -> Result<()> {
     let pixels_per_meter = (f64::from(result.image.width()) * 1000.0 / result.width_mm).round();
     if !(1.0..=f64::from(u32::MAX)).contains(&pixels_per_meter) {
         anyhow::bail!("resolution cannot be represented in PNG metadata");
@@ -149,15 +179,14 @@ fn run(args: Args) -> Result<()> {
             .context("cannot encode PNG pixels")?;
         writer.finish().context("cannot finalize PNG")?;
     }
-    std::fs::write(&args.output, bytes)
-        .with_context(|| format!("cannot write {}", args.output.display()))?;
+    std::fs::write(output, bytes).with_context(|| format!("cannot write {}", output.display()))?;
     eprintln!(
         "Saved {:.2} x {:.2} mm ({} x {} px) to {}",
         result.width_mm,
         result.height_mm,
         result.image.width(),
         result.image.height(),
-        args.output.display()
+        output.display()
     );
     Ok(())
 }

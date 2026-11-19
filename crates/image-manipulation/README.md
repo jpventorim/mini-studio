@@ -42,8 +42,9 @@ Raster operations use whole pixels.
    horizontally inside its panel, aligned toward the base at the chosen
    elevation. Add an opaque white square tab below the panel. Preserve
    transparency in the artwork panel and its clean inset.
-10. **Draw the base lines.** Add one-pixel black horizontal lines at the tab's
-    midpoint and the join between the artwork panel and tab.
+10. **Draw base lines and optional numbers.** Add one-pixel black horizontal
+    lines at the tab's midpoint and its join with the artwork. When numbering is
+    enabled, center the copy number in the inner half of the base.
 11. **Create the mirrored pair and center fold.** Reflect the completed half
     vertically above the upright half, including its base tab and divider lines.
     Add a symmetric two-row black center-fold mark outside the clean insets.
@@ -111,6 +112,36 @@ cargo run -p image-manipulation --features cli -- \
   --input figure.png --output flying.png --position flying
 ```
 
+## Copy numbering
+
+Set `number_copies: true` to print numbers on both base tabs. It defaults to
+`false`. Each source starts at 1: four copies of one image get 1–4; three copies
+of another get 1–3.
+
+Use `prepare_copies(&source, quantity, &options)` to generate copies one at a
+time. Trimming and resizing run once per source. Each iterator item is a
+`Result<PreparedImage, Error>`; `copy_number` records the printed number.
+Calling `prepare` directly with numbering enabled produces number 1.
+
+Numbers use bundled **Atkinson Hyperlegible Bold**, black on white, in the inner
+half of each tab. The font was designed for readers with low vision
+([Braille Institute](https://www.brailleinstitute.org/about-us/news/braille-institute-launches-enhanced-atkinson-hyperlegible-font-to-make-reading-easier/)).
+Digits target 4 mm height and shrink to fit, preserving a 1 mm cutting inset.
+Labels below 2.5 mm or 8 pixels high return an error. No font installation is
+needed; the font's SIL Open Font License is in `assets/fonts/OFL.txt`.
+
+```sh
+cargo run -p image-manipulation --features cli -- \
+  --input image_1.png --output image_1-standee.png --copies 4 --number-copies
+cargo run -p image-manipulation --features cli -- \
+  --input image_2.png --output image_2-standee.png --copies 3 --number-copies
+```
+
+Multiple copies produce files such as `image_1-standee-1.png` through
+`image_1-standee-4.png`. A single copy uses the output filename unchanged.
+`--copies` also works without numbering. When packing numbered standees, pass
+each generated copy as a separate item with quantity 1 to preserve its number.
+
 ## Library
 
 ```rust
@@ -162,8 +193,9 @@ metadata. Use `--position grounded|hovering|flying` to choose placement, and
 `--max-height-mm` to match the available paper height after paper margins.
 Use `--dpi`, `--artwork-width-ratio`, `--trim-background`,
 `--background-color RRGGBB`, `--alpha-threshold`, and `--color-tolerance` to adjust
-preparation. Run `--help` for details. No output file is written until preparation
-and encoding succeed. An existing destination is overwritten on success.
+preparation. Run `--help` for details. Each file is written after its preparation
+and encoding succeed. Existing destinations are overwritten. If a later copy
+fails, earlier files remain.
 
 ## Packing
 
