@@ -186,6 +186,8 @@ function AllComponents() {
                 surface="mounted"
                 defaultValue="a4"
                 items={[
+                  { value: "a2", label: "A2" },
+                  { value: "a3", label: "A3" },
                   { value: "a4", label: "A4" },
                   { value: "letter", label: "Letter" },
                 ]}

@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export const paperSizes = {
+  a2: { label: "A2", width: 420, height: 594 },
+  a3: { label: "A3", width: 297, height: 420 },
   a4: { label: "A4", width: 210, height: 297 },
   letter: { label: "Letter", width: 215.9, height: 279.4 },
 } as const;
@@ -12,11 +14,15 @@ export type SheetSettings = {
   spacingMm: number;
 };
 
+export function isPaperSize(value: unknown): value is SheetSettings["paper"] {
+  return typeof value === "string" && Object.keys(paperSizes).includes(value);
+}
+
 export const defaultSettings: SheetSettings = {
   paper: "a4",
   dpi: 300,
-  marginMm: 5,
-  spacingMm: 2,
+  marginMm: 2,
+  spacingMm: 0,
 };
 
 export type ImportedImage = {

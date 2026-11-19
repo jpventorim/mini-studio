@@ -25,6 +25,7 @@ import { PrintPreview } from "./PrintPreview";
 import {
   defaultSettings,
   desktop,
+  isPaperSize,
   type PreviewPage,
   type PrintError,
   type PrintImage,
@@ -214,8 +215,7 @@ function App() {
               value={settings.paper}
               items={paperOptions}
               onValueChange={(paper) => {
-                if (paper === "a4" || paper === "letter")
-                  updateSettings({ paper });
+                if (isPaperSize(paper)) updateSettings({ paper });
               }}
             />
             <Popover
