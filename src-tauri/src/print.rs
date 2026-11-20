@@ -68,6 +68,7 @@ impl CachedPreparation {
 struct PreparedDocument {
     sources: Vec<PreparedSource>,
     layout: DocumentLayout,
+    pdf: Mutex<Option<Arc<Vec<u8>>>>,
 }
 
 impl PrintState {
@@ -225,7 +226,7 @@ pub(crate) fn remove_image(state: State<'_, PrintState>, id: u32) -> Result<(), 
     Ok(())
 }
 
-#[derive(Deserialize, PartialEq)]
+#[derive(Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PrintRequest {
     items: Vec<PrintItem>,
@@ -252,7 +253,7 @@ impl PrintRequest {
     }
 }
 
-#[derive(Deserialize, PartialEq)]
+#[derive(Clone, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct PrintItem {
     id: u32,
@@ -505,7 +506,40 @@ fn prepared_document(
         }
     };
     let layout = image_packing::layout(&items(&sources), &request.options())?;
-    Ok(Arc::new(PreparedDocument { sources, layout }))
+    let document = Arc::new(PreparedDocument {
+        sources,
+        layout,
+        pdf: Mutex::default(),
+    });
+    // Share one document (including its lazy PDF) between preview and export.
+    // Recheck source identity after preparation in case an image was removed.
+    let mut workspace = state.workspace()?;
+    if let Some((item, _)) = request
+        .items
+        .iter()
+        .zip(&originals)
+        .find(|(item, original)| {
+            !workspace
+                .images
+                .get(&item.id)
+                .is_some_and(|current| Arc::ptr_eq(current, original))
+        })
+    {
+        return Err(PrintError {
+            message: "This image is no longer available.".into(),
+            image_id: Some(item.id),
+        });
+    }
+    // Another worker may have completed the same request while we prepared.
+    if let Some((_, existing)) = workspace
+        .preview
+        .as_ref()
+        .filter(|(cached, _)| cached == request)
+    {
+        return Ok(Arc::clone(existing));
+    }
+    workspace.preview = Some((request.clone(), Arc::clone(&document)));
+    Ok(document)
 }
 
 #[derive(Serialize)]
@@ -557,20 +591,7 @@ pub(crate) async fn preview_layout(
     let state = state.inner().clone();
     blocking(move || {
         let document = prepared_document(&state, &request)?;
-        let preview = document_preview(&document);
-        let mut workspace = state.workspace()?;
-        if let Some(item) = request
-            .items
-            .iter()
-            .find(|item| !workspace.images.contains_key(&item.id))
-        {
-            return Err(PrintError {
-                message: "This image is no longer available.".into(),
-                image_id: Some(item.id),
-            });
-        }
-        workspace.preview = Some((request, document));
-        Ok(preview)
+        Ok(document_preview(&document))
     })
     .await
 }
@@ -640,21 +661,41 @@ pub(crate) async fn export_pdf(
         let path = path
             .into_path()
             .map_err(|error| PrintError::new(error.to_string()))?;
-        let print_images = render_print_images(&state, &request, &document)?;
-        let print_items: Vec<_> = document
-            .sources
-            .iter()
-            .zip(&print_images)
-            .map(|(source, image)| {
-                ImageItem::new(source.image_id.to_string(), image, source.quantity)
-                    .with_width_mm(source.image.width_mm)
-                    .with_rotation(true)
-            })
-            .collect();
-        save_pdf(&path, &print_items, &document.layout)?;
+        let pdf = pdf_bytes(&state, &request, &document)?;
+        save_pdf(&path, pdf.as_slice())?;
         Ok(Some(path.to_string_lossy().into_owned()))
     })
     .await
+}
+
+fn pdf_bytes(
+    state: &PrintState,
+    request: &PrintRequest,
+    document: &PreparedDocument,
+) -> Result<Arc<Vec<u8>>, PrintError> {
+    // Serialize generation for this document only. Other settings/documents can
+    // still prepare independently; failures leave the cache empty for a retry.
+    let mut cache = document
+        .pdf
+        .lock()
+        .map_err(|_| PrintError::new("The PDF cache could not be accessed."))?;
+    if let Some(pdf) = cache.as_ref() {
+        return Ok(Arc::clone(pdf));
+    }
+    let print_images = render_print_images(state, request, document)?;
+    let print_items: Vec<_> = document
+        .sources
+        .iter()
+        .zip(&print_images)
+        .map(|(source, image)| {
+            ImageItem::new(source.image_id.to_string(), image, source.quantity)
+                .with_width_mm(source.image.width_mm)
+                .with_rotation(true)
+        })
+        .collect();
+    let pdf = Arc::new(image_packing::render_pdf(&print_items, &document.layout)?);
+    *cache = Some(Arc::clone(&pdf));
+    Ok(pdf)
 }
 
 fn render_print_images(
@@ -693,23 +734,14 @@ fn render_print_images(
     Ok(print_images)
 }
 
-fn save_pdf<I>(
-    path: &Path,
-    items: &[ImageItem<'_, I>],
-    layout: &DocumentLayout,
-) -> Result<(), PrintError>
-where
-    I: image::GenericImageView,
-    <I::Pixel as image::Pixel>::Subpixel: Into<u16>,
-{
-    let pdf = image_packing::render_pdf(items, layout)?;
+fn save_pdf(path: &Path, pdf: &[u8]) -> Result<(), PrintError> {
     let folder = path
         .parent()
         .ok_or_else(|| PrintError::new("Choose a folder for the PDF."))?;
     let save_error =
         |error: std::io::Error| PrintError::new(format!("Could not save the PDF. {error}"));
     let mut file = tempfile::NamedTempFile::new_in(folder).map_err(save_error)?;
-    file.write_all(&pdf).map_err(save_error)?;
+    file.write_all(pdf).map_err(save_error)?;
     file.persist(path)
         .map_err(|error| save_error(error.error))?;
     Ok(())
@@ -772,6 +804,140 @@ mod tests {
                 .insert(item.id, Arc::clone(source));
         }
         prepare_sources(&state, request, sources)
+    }
+
+    #[test]
+    fn unchanged_exports_reuse_pdf_bytes_and_can_save_to_different_paths() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let request = make_request(vec![item(10, 2, true)]);
+        let document = prepared_document(&state, &request).unwrap();
+        assert!(
+            document.pdf.lock().unwrap().is_none(),
+            "preview preparation must not render PDF"
+        );
+        let first = pdf_bytes(&state, &request, &document).unwrap();
+        let repeated = prepared_document(&state, &request).unwrap();
+        assert!(
+            Arc::ptr_eq(&document, &repeated),
+            "export reuse must not require a separate preview call"
+        );
+        let second = pdf_bytes(&state, &request, &repeated).unwrap();
+        assert!(
+            Arc::ptr_eq(&first, &second),
+            "reuse the allocation, not just equivalent PDF content"
+        );
+        let folder = tempfile::tempdir().unwrap();
+        for name in ["first.pdf", "second.pdf"] {
+            let path = folder.path().join(name);
+            save_pdf(&path, first.as_slice()).unwrap();
+            assert_eq!(std::fs::read(path).unwrap(), *first);
+        }
+    }
+
+    #[test]
+    fn setting_and_image_edits_replace_the_pdf_cache_and_release_old_bytes() {
+        let state = PrintState::default();
+        for id in [10, 20] {
+            state
+                .workspace()
+                .unwrap()
+                .images
+                .insert(id, Arc::new(source()));
+        }
+        let request = make_request(vec![item(10, 1, false)]);
+        let document = prepared_document(&state, &request).unwrap();
+        let pdf = pdf_bytes(&state, &request, &document).unwrap();
+        let old_bytes = Arc::downgrade(&pdf);
+        let edits: [fn(&mut PrintRequest); 10] = [
+            |r| r.items[0].quantity += 1,
+            |r| r.items[0].number_copies = true,
+            |r| r.items[0].size = 2.0,
+            |r| r.items[0].border_px += 1,
+            |r| r.items[0].artwork_width_ratio = 0.8,
+            |r| r.spacing_mm = 0.5,
+            |r| r.margin_mm = 0.5,
+            |r| r.height_mm = 420.0,
+            |r| r.dpi = 150.0,
+            |r| r.grid_size_mm = 20.0,
+        ];
+        for edit in edits {
+            let mut changed = request.clone();
+            edit(&mut changed);
+            let updated = prepared_document(&state, &changed).unwrap();
+            assert!(!Arc::ptr_eq(&document, &updated));
+            assert!(
+                updated.pdf.lock().unwrap().is_none(),
+                "changed settings must not reuse PDF bytes"
+            );
+        }
+        let mut changed = request.clone();
+        changed.items.push(item(20, 1, false));
+        let updated = prepared_document(&state, &changed).unwrap();
+        assert!(!Arc::ptr_eq(&document, &updated));
+        assert!(updated.pdf.lock().unwrap().is_none());
+        drop(pdf);
+        drop(document);
+        assert!(
+            old_bytes.upgrade().is_none(),
+            "old PDF bytes must be released with their document"
+        );
+    }
+
+    #[test]
+    fn concurrent_exports_share_one_pdf_allocation() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let request = make_request(vec![item(10, 2, true)]);
+        let barrier = std::sync::Barrier::new(4);
+        let results = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..4)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        let document = prepared_document(&state, &request).unwrap();
+                        pdf_bytes(&state, &request, &document).unwrap()
+                    })
+                })
+                .collect();
+            handles
+                .into_iter()
+                .map(|h| h.join().unwrap())
+                .collect::<Vec<_>>()
+        });
+        assert!(results.iter().all(|pdf| Arc::ptr_eq(&results[0], pdf)));
+    }
+
+    #[test]
+    fn failed_generation_is_retryable_and_failed_saving_preserves_cached_bytes() {
+        let state = PrintState::default();
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(source()));
+        let request = make_request(vec![item(10, 1, false)]);
+        let document = prepared_document(&state, &request).unwrap();
+        let original = state.workspace().unwrap().images.remove(&10).unwrap();
+        assert!(pdf_bytes(&state, &request, &document).is_err());
+        assert!(document.pdf.lock().unwrap().is_none());
+        state.workspace().unwrap().images.insert(10, original);
+        let pdf = pdf_bytes(&state, &request, &document).unwrap();
+        let folder = tempfile::tempdir().unwrap();
+        assert!(save_pdf(&folder.path().join("missing/sheet.pdf"), pdf.as_slice()).is_err());
+        let retry = pdf_bytes(&state, &request, &document).unwrap();
+        assert!(Arc::ptr_eq(&pdf, &retry));
+        let destination = folder.path().join("sheet.pdf");
+        save_pdf(&destination, retry.as_slice()).unwrap();
+        assert_eq!(std::fs::read(destination).unwrap(), *pdf);
     }
 
     #[test]
@@ -853,7 +1019,8 @@ mod tests {
                 .starts_with("data:image/png;base64,")
         );
         let destination = folder.path().join("sheet.pdf");
-        save_pdf(&destination, &packing_items, &document.layout).unwrap();
+        let pdf = pdf_bytes(&state, &request, &document).unwrap();
+        save_pdf(&destination, pdf.as_slice()).unwrap();
         assert!(std::fs::read(destination).unwrap().starts_with(b"%PDF-"));
         assert_eq!(std::fs::read(path).unwrap(), original);
         state.workspace().unwrap().preview = Some((request, Arc::clone(&document)));
@@ -901,6 +1068,7 @@ mod tests {
         let document = PreparedDocument {
             sources: prepared,
             layout,
+            pdf: Mutex::default(),
         };
         let preview = document_preview(&document);
         assert_eq!(preview.images.len(), 7);

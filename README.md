@@ -58,7 +58,11 @@ and use fast lossless PNG encoding. PDF export renders artwork again from the
 retained original source, using linear-light Lanczos3 and 16-bit channels, once
 per source. Numbered copies reuse this artwork.
 PDF images and transparency are compressed losslessly at the selected print DPI;
-preview thumbnails are never used for export.
+preview thumbnails are never used for export. The latest prepared document caches
+its PDF bytes in memory after the first export. Exporting unchanged settings to
+another path only writes those bytes. Image or setting changes replace the
+document and its PDF cache; removing an image or closing the app releases it.
+Failed PDF generation can be retried, and a failed save retains the cached PDF.
 
 Imports convert supported embedded RGB/grayscale ICC profiles and CICP color
 metadata to sRGB. Invalid or unsupported profiles produce an error rather than
