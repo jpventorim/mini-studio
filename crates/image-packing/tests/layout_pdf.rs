@@ -379,3 +379,80 @@ fn images_with_identical_bytes_but_different_dimensions_are_distinct() {
         "different image shapes must remain distinct: {dimensions:?}"
     );
 }
+
+#[test]
+fn pdf_preserves_sixteen_bit_channels_alpha_and_explicit_srgb_profile() {
+    let source = image::ImageBuffer::from_fn(3, 2, |x, y| {
+        Rgba([
+            12345u16 + x as u16,
+            23456 + y as u16,
+            34567,
+            45678 + x as u16,
+        ])
+    });
+    let items = [ImageItem::new("16-bit", &source, 2).with_width_mm(25.0)];
+    let output = compose(&items, &LayoutOptions::default()).unwrap();
+    let pdf = lopdf::Document::load_mem(&output.pdf).unwrap();
+    let color = pdf
+        .objects
+        .values()
+        .filter_map(|o| o.as_stream().ok())
+        .find(|s| s.dict.has(b"SMask"))
+        .unwrap();
+    assert_eq!(color.dict.get(b"Width").unwrap().as_i64().unwrap(), 3);
+    assert_eq!(color.dict.get(b"Height").unwrap().as_i64().unwrap(), 2);
+    assert_eq!(
+        color
+            .dict
+            .get(b"BitsPerComponent")
+            .unwrap()
+            .as_i64()
+            .unwrap(),
+        16
+    );
+    let space = pdf
+        .dereference(color.dict.get(b"ColorSpace").unwrap())
+        .unwrap()
+        .1
+        .as_array()
+        .unwrap();
+    assert_eq!(space[0].as_name().unwrap(), b"ICCBased");
+    let profile = pdf
+        .get_object(space[1].as_reference().unwrap())
+        .unwrap()
+        .as_stream()
+        .unwrap();
+    assert_eq!(profile.dict.get(b"N").unwrap().as_i64().unwrap(), 3);
+    let icc = profile.decompressed_content().unwrap();
+    assert_eq!(&icc[16..20], b"RGB ");
+    let expected_rgb: Vec<u8> = source
+        .pixels()
+        .flat_map(|p| {
+            p.0[..3]
+                .iter()
+                .flat_map(|v| v.to_be_bytes())
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    assert_eq!(
+        color.decompressed_content().unwrap(),
+        expected_rgb,
+        "no quantization, downsampling, or lossy compression"
+    );
+    let alpha = pdf
+        .get_object(color.dict.get(b"SMask").unwrap().as_reference().unwrap())
+        .unwrap()
+        .as_stream()
+        .unwrap();
+    assert_eq!(
+        alpha
+            .dict
+            .get(b"BitsPerComponent")
+            .unwrap()
+            .as_i64()
+            .unwrap(),
+        16
+    );
+    let expected_alpha: Vec<u8> = source.pixels().flat_map(|p| p[3].to_be_bytes()).collect();
+    assert_eq!(alpha.decompressed_content().unwrap(), expected_alpha);
+}

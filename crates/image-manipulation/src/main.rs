@@ -102,12 +102,17 @@ fn parse_color(value: &str) -> Result<[u8; 3], String> {
 }
 
 fn run(args: Args) -> Result<()> {
-    let source = image::ImageReader::open(&args.input)
+    use image::ImageDecoder;
+    let reader = image::ImageReader::open(&args.input)
         .with_context(|| format!("cannot open {}", args.input.display()))?
         .with_guessed_format()
-        .context("cannot identify image format")?
-        .decode()
-        .with_context(|| format!("cannot decode {}", args.input.display()))?;
+        .context("cannot identify image format")?;
+    let mut decoder = reader.into_decoder().context("cannot decode image")?;
+    let icc = decoder.icc_profile().context("cannot read color profile")?;
+    let orientation = decoder.orientation().context("cannot read orientation")?;
+    let mut source = image::DynamicImage::from_decoder(decoder).context("cannot decode pixels")?;
+    source.apply_orientation(orientation);
+    let source = image_manipulation::normalize_color(source, icc.as_deref())?;
     let mode = args
         .background_color
         .map(TrimMode::Color)
@@ -172,6 +177,7 @@ fn save_png(result: &PreparedImage, output: &Path) -> Result<()> {
             png::Encoder::new(&mut bytes, result.image.width(), result.image.height());
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
+        encoder.set_source_srgb(png::SrgbRenderingIntent::Perceptual);
         encoder.set_pixel_dims(Some(png::PixelDimensions {
             xppu: pixels_per_meter as u32,
             yppu: pixels_per_meter as u32,

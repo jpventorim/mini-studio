@@ -1571,6 +1571,7 @@ version = "0.1.0"
 dependencies = [
  "ab_glyph",
  "image",
+ "moxcms",
  "thiserror 2.0.21",
 ]
 

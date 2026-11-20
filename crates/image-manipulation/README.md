@@ -256,3 +256,22 @@ cargo run -p image-packing --features cli -- \
 The explicit width preserves grid sizing independently of pixel rounding. Zero
 border avoids shrinking the standee to make room for an additional validation
 border. Larger sizes use their corresponding physical width.
+
+### Print color and precision
+
+Call `normalize_color(decoded, icc_profile)` before preparation when importing
+files. It converts supported RGB/grayscale ICC profiles or CICP metadata to
+sRGB and retains high-bit-depth data. Untagged files are assumed sRGB; invalid
+or unsupported profiles return an error. Buffer-based APIs expect sRGB pixels.
+The development CLI performs this normalization automatically and saves tagged
+8-bit sRGB PNGs.
+
+Artwork uses linear-light Lanczos3 filtering with premultiplied alpha, avoiding
+dark resampling edges and hidden-color fringes. `PreparedImage.image` stays an
+8-bit buffer for previews and compatibility. For high-quality export, call
+`template.prepare_print_artwork(&normalized_original)` once, then
+`copy.render_print_image(&artwork)` for each numbered copy. This produces
+16-bit sRGB pixels with the same layout and full source precision retained
+until the final resampling step. Source bounds are determined by the existing
+8-bit trim thresholds. Increasing DPI or channel depth cannot restore detail
+missing from the original image.

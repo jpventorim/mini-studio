@@ -24,7 +24,7 @@ use image::{GenericImageView, Pixel};
 /// A borrowed image with an independent quantity and optional print dimensions.
 ///
 /// A batch uses one view type. For mixed RGB/RGBA images, use `DynamicImage`.
-/// Export converts pixels to RGBA8 and embeds them at the requested physical size.
+/// Export preserves 8-bit or 16-bit channel precision and embeds them at the requested physical size.
 #[derive(Debug, Clone)]
 pub struct ImageItem<'a, I: ?Sized> {
     /// Identifier recorded in placement metadata; need not be unique.
@@ -131,7 +131,8 @@ pub struct PdfOutput {
 pub fn compose<I>(items: &[ImageItem<'_, I>], options: &LayoutOptions) -> Result<PdfOutput, Error>
 where
     I: GenericImageView + ?Sized,
-    I::Pixel: Pixel<Subpixel = u8>,
+    I::Pixel: Pixel,
+    <I::Pixel as Pixel>::Subpixel: Into<u16>,
 {
     let layout = layout(items, options)?;
     let pdf = render_pdf(items, &layout)?;

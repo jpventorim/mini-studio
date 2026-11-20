@@ -643,6 +643,7 @@ dependencies = [
  "clap",
  "image",
  "image-packing",
+ "moxcms",
  "png",
  "tempfile",
  "thiserror",

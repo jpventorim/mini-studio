@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use image::{GenericImageView, Pixel};
 use krilla::{
-    Document,
+    Document, SerializeSettings,
     geom::{Size, Transform},
     image::{BitsPerComponent, CustomImage, Image, ImageColorspace},
     page::PageSettings,
@@ -16,6 +16,7 @@ use crate::{DocumentLayout, Error, ImageItem};
 struct Bitmap {
     size: (u32, u32),
     rgb: Arc<Vec<u8>>,
+    bytes_per_component: u8,
     alpha: Arc<Vec<u8>>,
 }
 
@@ -27,7 +28,11 @@ impl CustomImage for Bitmap {
         Some(&self.alpha)
     }
     fn bits_per_component(&self) -> BitsPerComponent {
-        BitsPerComponent::Eight
+        if self.bytes_per_component == 2 {
+            BitsPerComponent::Sixteen
+        } else {
+            BitsPerComponent::Eight
+        }
     }
     fn size(&self) -> (u32, u32) {
         self.size
@@ -46,7 +51,10 @@ fn points(mm: f64) -> f32 {
 
 /// Export a previously calculated layout, embedding each source image once.
 ///
-/// Pixels are converted to RGBA8, retaining transparency. Repeated copies share
+/// Typed 8-bit and 16-bit buffers are embedded losslessly in tagged sRGB,
+/// retaining transparency. Callers must normalize source colors to sRGB first.
+/// Use typed 16-bit buffers to preserve precision: `DynamicImage`'s generic
+/// pixel view exposes 8-bit samples. Repeated copies share
 /// an image resource. No full-page bitmap or DPI-based resampling is performed.
 /// Sources must have the same order, identifiers, dimensions, quantities, and
 /// print widths as the layout inputs; their pixel contents may be replaced.
@@ -57,18 +65,20 @@ fn points(mm: f64) -> f32 {
 pub fn render_pdf<I>(items: &[ImageItem<'_, I>], layout: &DocumentLayout) -> Result<Vec<u8>, Error>
 where
     I: GenericImageView + ?Sized,
-    I::Pixel: Pixel<Subpixel = u8>,
+    I::Pixel: Pixel,
+    <I::Pixel as Pixel>::Subpixel: Into<u16>,
 {
     if !layout.matches(items) {
         return Err(Error::LayoutMismatch);
     }
+    let bytes_per_component = std::mem::size_of::<<I::Pixel as Pixel>::Subpixel>() as u8;
     let images: Vec<_> = items
         .iter()
         .map(|item| {
             // Krilla's custom-image decoder uses u32 channel byte counts.
             let pixel_count = item.image.width().checked_mul(item.image.height());
             let color_count = pixel_count
-                .and_then(|count| count.checked_mul(3))
+                .and_then(|count| count.checked_mul(3 * u32::from(bytes_per_component)))
                 .ok_or_else(|| {
                     Error::InvalidInput("image exceeds pdf channel size limits".into())
                 })?;
@@ -84,14 +94,27 @@ where
             for y in 0..item.image.height() {
                 for x in 0..item.image.width() {
                     let pixel = item.image.get_pixel(x, y).to_rgba();
-                    rgb.extend_from_slice(&pixel.0[..3]);
-                    alpha.push(pixel.0[3]);
+                    for channel in &pixel.0[..3] {
+                        let value: u16 = (*channel).into();
+                        if bytes_per_component == 2 {
+                            rgb.extend_from_slice(&value.to_be_bytes());
+                        } else {
+                            rgb.push(value as u8);
+                        }
+                    }
+                    let value: u16 = pixel.0[3].into();
+                    if bytes_per_component == 2 {
+                        alpha.extend_from_slice(&value.to_be_bytes());
+                    } else {
+                        alpha.push(value as u8);
+                    }
                 }
             }
             Image::from_custom(
                 Bitmap {
                     size: item.image.dimensions(),
                     rgb: Arc::new(rgb),
+                    bytes_per_component,
                     alpha: Arc::new(alpha),
                 },
                 true,
@@ -99,7 +122,10 @@ where
             .map_err(Error::ImageEmbedding)
         })
         .collect::<Result<_, Error>>()?;
-    let mut document = Document::new();
+    let mut document = Document::new_with(SerializeSettings {
+        no_device_cs: true,
+        ..Default::default()
+    });
     for page_layout in layout.pages() {
         let settings = PageSettings::from_wh(
             points(page_layout.size.width_mm),

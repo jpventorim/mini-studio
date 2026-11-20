@@ -21,7 +21,9 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+mod color;
 mod numbering;
+pub use color::normalize_color;
 mod trim;
 pub use trim::{TrimMode, TrimOptions, TrimmedImage, trim};
 
@@ -183,6 +185,9 @@ pub enum Error {
     /// Invalid physical size, resolution, ratio, or empty dimensions.
     #[error("invalid input: {0}")]
     InvalidInput(&'static str),
+    /// A color profile is invalid or cannot be converted safely.
+    #[error("color conversion failed: {0}")]
+    Color(String),
     /// No pixels remain after trimming the background.
     #[error("the image contains no foreground pixels after trimming")]
     EmptyImage,
@@ -240,38 +245,153 @@ fn dimension(value: f64) -> Result<u32, Error> {
     Ok(value.round() as u32)
 }
 
-// Premultiplication prevents hidden RGB in transparent pixels producing fringes.
-fn resize_artwork(source: &RgbaImage, width: u32, height: u32) -> Result<RgbaImage, Error> {
+fn srgb_to_linear(value: f32) -> f32 {
+    if value <= 0.04045 {
+        value / 12.92
+    } else {
+        ((value + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn linear_to_srgb(value: f32) -> f32 {
+    let value = value.clamp(0.0, 1.0);
+    if value <= 0.0031308 {
+        value * 12.92
+    } else {
+        1.055 * value.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+// Filter linear-light, premultiplied RGB; alpha is coverage and stays linear.
+fn resize_linear(
+    source: &image::Rgba32FImage,
+    width: u32,
+    height: u32,
+) -> Result<image::Rgba32FImage, Error> {
     check_dimensions(width, height)?;
     let premultiplied = image::Rgba32FImage::from_fn(source.width(), source.height(), |x, y| {
         let p = source.get_pixel(x, y).0;
-        let a = f32::from(p[3]) / 255.0;
-        image::Rgba([
-            f32::from(p[0]) / 255.0 * a,
-            f32::from(p[1]) / 255.0 * a,
-            f32::from(p[2]) / 255.0 * a,
-            a,
+        Rgba([
+            srgb_to_linear(p[0]) * p[3],
+            srgb_to_linear(p[1]) * p[3],
+            srgb_to_linear(p[2]) * p[3],
+            p[3],
         ])
     });
-    let resized = imageops::resize(
+    let mut resized = imageops::resize(
         &premultiplied,
         width,
         height,
         imageops::FilterType::Lanczos3,
     );
+    for pixel in resized.pixels_mut() {
+        let alpha = pixel.0[3].clamp(0.0, 1.0);
+        *pixel = if alpha > 0.0 {
+            Rgba([
+                linear_to_srgb(pixel.0[0] / pixel.0[3]),
+                linear_to_srgb(pixel.0[1] / pixel.0[3]),
+                linear_to_srgb(pixel.0[2] / pixel.0[3]),
+                alpha,
+            ])
+        } else {
+            Rgba([0.0; 4])
+        };
+    }
+    Ok(resized)
+}
+
+fn resize_artwork(source: &RgbaImage, width: u32, height: u32) -> Result<RgbaImage, Error> {
+    let float = image::Rgba32FImage::from_fn(source.width(), source.height(), |x, y| {
+        Rgba(source.get_pixel(x, y).0.map(|v| f32::from(v) / 255.0))
+    });
+    let resized = resize_linear(&float, width, height)?;
     let mut output = canvas(width, height)?;
     for (pixel, sample) in output.pixels_mut().zip(resized.pixels()) {
-        let alpha = sample.0[3].clamp(0.0, 1.0);
-        if alpha > 0.0 {
-            *pixel = Rgba([
-                ((sample.0[0] / alpha).clamp(0.0, 1.0) * 255.0).round() as u8,
-                ((sample.0[1] / alpha).clamp(0.0, 1.0) * 255.0).round() as u8,
-                ((sample.0[2] / alpha).clamp(0.0, 1.0) * 255.0).round() as u8,
-                (alpha * 255.0).round() as u8,
-            ]);
-        }
+        *pixel = Rgba(sample.0.map(|v| (v * 255.0).round() as u8));
     }
     Ok(output)
+}
+
+/// A 16-bit-per-channel sRGB image with straight alpha, suitable for lossless PDF export.
+pub type PrintImage = image::ImageBuffer<Rgba<u16>, Vec<u16>>;
+
+/// High-precision artwork resized once per source, reusable across numbered copies.
+pub struct PrintArtwork {
+    image: PrintImage,
+    source_bounds: PixelRect,
+}
+
+impl PreparedImage {
+    /// Resize the same color-normalized source used for preparation, retaining
+    /// 16-bit/float precision until the final 16-bit output. Uses linear-light Lanczos3.
+    ///
+    /// # Errors
+    /// Rejects source bounds outside the supplied image or excessive dimensions.
+    pub fn prepare_print_artwork(
+        &self,
+        source: &image::DynamicImage,
+    ) -> Result<PrintArtwork, Error> {
+        let b = self.source_bounds;
+        if b.x.checked_add(b.width).is_none_or(|v| v > source.width())
+            || b.y
+                .checked_add(b.height)
+                .is_none_or(|v| v > source.height())
+        {
+            return Err(Error::InvalidInput(
+                "print source does not match prepared bounds",
+            ));
+        }
+        check_dimensions(b.width, b.height)?;
+        let cropped = source.crop_imm(b.x, b.y, b.width, b.height).to_rgba32f();
+        let resized = resize_linear(
+            &cropped,
+            self.artwork_bounds.width,
+            self.artwork_bounds.height,
+        )?;
+        let image = PrintImage::from_fn(resized.width(), resized.height(), |x, y| {
+            Rgba(
+                resized
+                    .get_pixel(x, y)
+                    .0
+                    .map(|v| (v * 65535.0).round() as u16),
+            )
+        });
+        Ok(PrintArtwork {
+            image,
+            source_bounds: b,
+        })
+    }
+
+    /// Build the full 16-bit strip, reusing artwork across numbered copies.
+    /// Base labels, fold lines, and borders retain the prepared geometry.
+    ///
+    /// # Errors
+    /// Rejects artwork generated for incompatible source bounds or print dimensions.
+    pub fn render_print_image(&self, artwork: &PrintArtwork) -> Result<PrintImage, Error> {
+        let b = self.artwork_bounds;
+        check_dimensions(self.image.width(), self.image.height())?;
+        if artwork.source_bounds != self.source_bounds
+            || artwork.image.dimensions() != (b.width, b.height)
+            || b.x
+                .checked_add(b.width)
+                .is_none_or(|v| v > self.image.width())
+            || b.y
+                .checked_add(b.height)
+                .is_none_or(|v| v > self.image.height())
+        {
+            return Err(Error::InvalidInput(
+                "print artwork does not match prepared geometry",
+            ));
+        }
+        let mut output = PrintImage::from_fn(self.image.width(), self.image.height(), |x, y| {
+            Rgba(self.image.get_pixel(x, y).0.map(|v| u16::from(v) * 257))
+        });
+        for (x, y, pixel) in artwork.image.enumerate_pixels() {
+            output.put_pixel(b.x + x, b.y + y, *pixel);
+            output.put_pixel(b.x + x, output.height() - 1 - (b.y + y), *pixel);
+        }
+        Ok(output)
+    }
 }
 
 /// Trim, resize, add a base, and create a vertically mirrored foldable pair.
@@ -561,4 +681,51 @@ where
         next: 0,
         numbered: options.number_copies,
     })
+}
+
+#[cfg(test)]
+mod print_quality_tests {
+    use super::*;
+
+    #[test]
+    fn black_and_white_downsampling_averages_light_not_encoded_samples() {
+        let source = RgbaImage::from_fn(2, 1, |x, _| Rgba([if x == 0 { 0 } else { 255 }; 4]));
+        let mut source = source;
+        for p in source.pixels_mut() {
+            p[3] = 255;
+        }
+        let result = resize_artwork(&source, 1, 1).unwrap();
+        let p = result.get_pixel(0, 0);
+        assert!(
+            (186..=189).contains(&p[0]),
+            "linear 50% gray should encode near 188, not 128: {p:?}"
+        );
+        assert_eq!(p[3], 255);
+    }
+
+    #[test]
+    fn print_render_retains_sixteen_bit_artwork_and_reuses_it_for_numbered_copies() {
+        let source = image::DynamicImage::ImageRgba16(PrintImage::from_pixel(
+            10,
+            20,
+            Rgba([12345, 23456, 34567, 45678]),
+        ));
+        let template = prepare(&source, &ManipulationOptions::default()).unwrap();
+        let artwork = template.prepare_print_artwork(&source).unwrap();
+        let mut images = Vec::new();
+        for number in [1, 2] {
+            let numbered = template.numbered_copy(number).unwrap();
+            let print = numbered.render_print_image(&artwork).unwrap();
+            assert_eq!(print.dimensions(), template.image.dimensions());
+            let b = template.artwork_bounds;
+            let (x, y) = (b.x + b.width / 2, b.y + b.height / 2);
+            let pixel = print.get_pixel(x, y);
+            for (actual, expected) in pixel.0.into_iter().zip([12345u16, 23456, 34567, 45678]) {
+                assert!(actual.abs_diff(expected) <= 2, "{pixel:?}");
+            }
+            assert_eq!(pixel, print.get_pixel(x, print.height() - 1 - y));
+            images.push(print);
+        }
+        assert_ne!(images[0], images[1], "base numbers must remain distinct");
+    }
 }

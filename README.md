@@ -47,14 +47,25 @@ The X button closes them sooner; the selected image keeps its inline error.
 
 Tauri coordinates two independent stages: `image-manipulation` produces pixels
 and physical dimensions; `image-packing` arranges those results and exports PDF.
-Preview and export use the same prepared images and layout. Neither crate calls
+Preview and export use the same geometry and layout. Neither crate calls
 the other at runtime. Base shape is currently fixed to a rectangle, and the
 available standee height is derived from the selected paper and margins.
 Prepared images and previews are cached separately from packing. Layout edits
 reuse them; increasing a numbered quantity generates only the additional
 copies. Geometry changes rebuild only the affected source. Unused copies and
 removed sources are released. Previews preserve aspect ratio without upscaling,
-and PDFs retain full-resolution images.
+and use fast lossless PNG encoding. PDF export renders artwork again from the
+retained original source, using linear-light Lanczos3 and 16-bit channels, once
+per source. Numbered copies reuse this artwork.
+PDF images and transparency are compressed losslessly at the selected print DPI;
+preview thumbnails are never used for export.
+
+Imports convert supported embedded RGB/grayscale ICC profiles and CICP color
+metadata to sRGB. Invalid or unsupported profiles produce an error rather than
+silently changing colors. PDFs embed an sRGB ICC profile so print software can
+convert to the printer/paper profile. CMYK is not forced: accurate conversion
+requires the destination printer profile, and a generic conversion can lose
+colors. Untagged inputs are assumed to be sRGB.
 Base width takes priority: artwork panels shorten when the strip reaches that
 height limit. The two folded feet together span the grid footprint after
 clearance. Below size 4, the outer sections fold underneath; sizes 4 and 5 use

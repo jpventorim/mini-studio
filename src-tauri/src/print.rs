@@ -140,9 +140,12 @@ fn decode(path: &Path) -> Result<(DynamicImage, String), String> {
     limits.max_alloc = Some(256 * 1024 * 1024);
     reader.limits(limits);
     let mut decoder = reader.into_decoder().map_err(|error| error.to_string())?;
+    let icc = decoder.icc_profile().map_err(|error| error.to_string())?;
     let orientation = decoder.orientation().map_err(|error| error.to_string())?;
     let mut image = DynamicImage::from_decoder(decoder).map_err(|error| error.to_string())?;
     image.apply_orientation(orientation);
+    let image = image_manipulation::normalize_color(image, icc.as_deref())
+        .map_err(|error| error.to_string())?;
 
     let mut preview = Cursor::new(Vec::new());
     image
@@ -624,7 +627,6 @@ pub(crate) async fn export_pdf(
     let state = state.inner().clone();
     blocking(move || {
         let document = prepared_document(&state, &request)?;
-        let items = items(&document.sources);
         let Some(path) = app
             .dialog()
             .file()
@@ -638,17 +640,68 @@ pub(crate) async fn export_pdf(
         let path = path
             .into_path()
             .map_err(|error| PrintError::new(error.to_string()))?;
-        save_pdf(&path, &items, &document.layout)?;
+        let print_images = render_print_images(&state, &request, &document)?;
+        let print_items: Vec<_> = document
+            .sources
+            .iter()
+            .zip(&print_images)
+            .map(|(source, image)| {
+                ImageItem::new(source.image_id.to_string(), image, source.quantity)
+                    .with_width_mm(source.image.width_mm)
+                    .with_rotation(true)
+            })
+            .collect();
+        save_pdf(&path, &print_items, &document.layout)?;
         Ok(Some(path.to_string_lossy().into_owned()))
     })
     .await
 }
 
-fn save_pdf(
+fn render_print_images(
+    state: &PrintState,
+    request: &PrintRequest,
+    document: &PreparedDocument,
+) -> Result<Vec<image_manipulation::PrintImage>, PrintError> {
+    let originals = sources(state, request)?;
+    let originals: HashMap<_, _> = request
+        .items
+        .iter()
+        .zip(originals)
+        .map(|(item, source)| (item.id, source))
+        .collect();
+    let mut artwork = HashMap::new();
+    let mut print_images = Vec::with_capacity(document.sources.len());
+    for prepared in &document.sources {
+        if let std::collections::hash_map::Entry::Vacant(entry) = artwork.entry(prepared.image_id) {
+            let original = originals
+                .get(&prepared.image_id)
+                .ok_or_else(|| PrintError::new("This image is no longer available."))?;
+            entry.insert(
+                prepared
+                    .image
+                    .prepare_print_artwork(original)
+                    .map_err(|error| PrintError::new(error.to_string()))?,
+            );
+        }
+        print_images.push(
+            prepared
+                .image
+                .render_print_image(&artwork[&prepared.image_id])
+                .map_err(|error| PrintError::new(error.to_string()))?,
+        );
+    }
+    Ok(print_images)
+}
+
+fn save_pdf<I>(
     path: &Path,
-    items: &[ImageItem<'_, image::RgbaImage>],
+    items: &[ImageItem<'_, I>],
     layout: &DocumentLayout,
-) -> Result<(), PrintError> {
+) -> Result<(), PrintError>
+where
+    I: image::GenericImageView,
+    <I::Pixel as image::Pixel>::Subpixel: Into<u16>,
+{
     let pdf = image_packing::render_pdf(items, layout)?;
     let folder = path
         .parent()
@@ -719,6 +772,48 @@ mod tests {
                 .insert(item.id, Arc::clone(source));
         }
         prepare_sources(&state, request, sources)
+    }
+
+    #[test]
+    fn export_uses_original_sixteen_bit_source_while_preserving_preview_geometry_and_numbers() {
+        let state = PrintState::default();
+        let original =
+            image::DynamicImage::ImageRgba16(image_manipulation::PrintImage::from_pixel(
+                10,
+                20,
+                image::Rgba([12345, 23456, 34567, 45678]),
+            ));
+        state
+            .workspace()
+            .unwrap()
+            .images
+            .insert(10, Arc::new(original));
+        let request = make_request(vec![item(10, 2, true)]);
+        let document = prepared_document(&state, &request).unwrap();
+        let print = render_print_images(&state, &request, &document).unwrap();
+        assert_eq!(print.len(), 2);
+        for (image, prepared) in print.iter().zip(&document.sources) {
+            assert_eq!(image.dimensions(), prepared.image.image.dimensions());
+            let b = prepared.image.artwork_bounds;
+            let pixel = image.get_pixel(b.x + b.width / 2, b.y + b.height / 2);
+            assert!(
+                pixel[0].abs_diff(12345) <= 2,
+                "must retain original precision: {pixel:?}"
+            );
+        }
+        assert_ne!(print[0], print[1], "numbered bases must remain distinct");
+        let items: Vec<_> = document
+            .sources
+            .iter()
+            .zip(&print)
+            .map(|(source, image)| {
+                ImageItem::new(source.image_id.to_string(), image, source.quantity)
+                    .with_width_mm(source.image.width_mm)
+                    .with_rotation(true)
+            })
+            .collect();
+        let pdf = image_packing::render_pdf(&items, &document.layout).unwrap();
+        assert!(pdf.starts_with(b"%PDF-"));
     }
 
     #[test]
