@@ -17,7 +17,7 @@ mod layout;
 mod pdf;
 
 pub use layout::{DocumentLayout, LayoutOptions, PageLayout, PageSize, Placement, layout};
-pub use pdf::render_pdf;
+pub use pdf::{PdfMetadata, render_pdf, render_pdf_with_metadata};
 
 use image::{GenericImageView, Pixel};
 
@@ -109,6 +109,9 @@ pub enum Error {
     /// An image could not be embedded by Krilla.
     #[error("image embedding failed: {0}")]
     ImageEmbedding(String),
+    /// Print settings could not be saved in the PDF.
+    #[error("pdf print settings failed: {0}")]
+    PdfSettings(String),
     /// Krilla could not serialize the PDF.
     #[error("pdf generation failed: {0}")]
     Pdf(#[from] krilla::error::KrillaError),

@@ -22,7 +22,7 @@ bin-packing = { version = "0.6.0", default-features = false, features = ["two-d"
 image.workspace = true
 krilla = { version = "0.8.2", default-features = false, features = ["raster-images"] }
 thiserror = "2.0.21"
+lopdf = { version = "0.47.0", default-features = false }
 
 [dev-dependencies]
 tempfile = "3.27.0"
-lopdf = "0.47.0"

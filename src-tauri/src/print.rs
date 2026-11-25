@@ -226,7 +226,7 @@ pub(crate) fn remove_image(state: State<'_, PrintState>, id: u32) -> Result<(), 
     Ok(())
 }
 
-#[derive(Clone, Deserialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PrintRequest {
     items: Vec<PrintItem>,
@@ -253,7 +253,7 @@ impl PrintRequest {
     }
 }
 
-#[derive(Clone, Deserialize, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 struct PrintItem {
     id: u32,
@@ -266,7 +266,7 @@ struct PrintItem {
     background_color: [u8; 3],
 }
 
-#[derive(Clone, Copy, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 enum Background {
     Auto,
@@ -693,9 +693,77 @@ fn pdf_bytes(
                 .with_rotation(true)
         })
         .collect();
-    let pdf = Arc::new(image_packing::render_pdf(&print_items, &document.layout)?);
+    let metadata = export_metadata(request, document)?;
+    let pdf = Arc::new(image_packing::render_pdf_with_metadata(
+        &print_items,
+        &document.layout,
+        &metadata,
+    )?);
     *cache = Some(Arc::clone(&pdf));
     Ok(pdf)
+}
+
+fn export_metadata(
+    request: &PrintRequest,
+    document: &PreparedDocument,
+) -> Result<image_packing::PdfMetadata, PrintError> {
+    let defaults = ManipulationOptions::default();
+    let prepared: Vec<_> = document
+        .sources
+        .iter()
+        .map(|source| {
+            let image = &source.image;
+            serde_json::json!({
+                "imageId": source.image_id,
+                "copyNumber": image.copy_number,
+                "quantity": source.quantity,
+                "pixelWidth": image.image.width(),
+                "pixelHeight": image.image.height(),
+                "widthMm": image.width_mm,
+                "heightMm": image.height_mm,
+                "effectiveRasterPpi": image.dpi,
+                "baseWidthMm": f64::from(image.base_bounds.width) * 25.4 / image.dpi,
+                "baseTabDepthMm": f64::from(image.base_bounds.height) * 25.4 / image.dpi,
+                "foldedHeightMm": f64::from(image.base_bounds.y - image.fold_y) * 25.4 / image.dpi,
+            })
+        })
+        .collect();
+    let snapshot = serde_json::json!({
+        "schemaVersion": 1,
+        "application": { "name": "rust-foundry", "version": env!("CARGO_PKG_VERSION") },
+        "targetRasterPpi": request.dpi,
+        "printScaling": "none",
+        "colorSpace": "sRGB",
+        "imageBitsPerChannel": 16,
+        "rotationAllowed": true,
+        "processing": {
+            "position": "grounded",
+            "baseShape": "rectangle",
+            "baseClearance": "automatic",
+            "alphaThreshold": defaults.trim.alpha_threshold,
+            "colorTolerance": defaults.trim.color_tolerance,
+            "maxStripHeightMm": request.width_mm.max(request.height_mm) - 2.0 * request.margin_mm,
+        },
+        // Save all selected settings, including those for each image.
+        "settings": request,
+        "pageCount": document.layout.pages().len(),
+        "preparedImages": prepared,
+    });
+    Ok(image_packing::PdfMetadata {
+        title: "Paper miniatures print sheet".into(),
+        description: format!(
+            "Print at actual size (100%). Paper: {} x {} mm; image resolution: {} PPI; margin: {} mm; spacing: {} mm; grid: {} mm; color: sRGB; image channels: 16-bit.",
+            request.width_mm,
+            request.height_mm,
+            request.dpi,
+            request.margin_mm,
+            request.spacing_mm,
+            request.grid_size_mm,
+        ),
+        export_settings: Some(serde_json::to_string(&snapshot).map_err(|error| {
+            PrintError::new(format!("Could not record export settings: {error}"))
+        })?),
+    })
 }
 
 fn render_print_images(
@@ -804,6 +872,87 @@ mod tests {
                 .insert(item.id, Arc::clone(source));
         }
         prepare_sources(&state, request, sources)
+    }
+
+    #[test]
+    fn export_settings_snapshot_records_every_requested_control_and_effective_resolution() {
+        let state = PrintState::default();
+        for id in [10, 20] {
+            state
+                .workspace()
+                .unwrap()
+                .images
+                .insert(id, Arc::new(source()));
+        }
+        let mut request = make_request(vec![item(10, 2, true), item(20, 3, false)]);
+        request.width_mm = 297.0;
+        request.height_mm = 420.0;
+        request.dpi = 300.0;
+        request.margin_mm = 0.5;
+        request.spacing_mm = 0.5;
+        request.grid_size_mm = 20.0;
+        request.items[0].size = 0.75;
+        request.items[0].border_px = 4;
+        request.items[0].artwork_width_ratio = 0.85;
+        request.items[1].trim = Background::Color;
+        request.items[1].background_color = [250, 251, 252];
+        let document = prepared_document(&state, &request).unwrap();
+        let metadata = export_metadata(&request, &document).unwrap();
+        assert!(metadata.description.contains("300 PPI"));
+        assert!(metadata.description.contains("297 x 420 mm"));
+        let snapshot: serde_json::Value =
+            serde_json::from_str(metadata.export_settings.as_deref().unwrap()).unwrap();
+        assert_eq!(snapshot["schemaVersion"], 1);
+        assert_eq!(snapshot["targetRasterPpi"].as_f64(), Some(300.0));
+        assert_eq!(snapshot["printScaling"], "none");
+        assert_eq!(
+            snapshot["settings"],
+            serde_json::to_value(&request).unwrap(),
+            "no requested field may be omitted"
+        );
+        assert_eq!(snapshot["imageBitsPerChannel"], 16);
+        assert_eq!(snapshot["colorSpace"], "sRGB");
+        assert_eq!(snapshot["processing"]["alphaThreshold"], 0);
+        assert_eq!(snapshot["processing"]["colorTolerance"], 8);
+        let bytes = pdf_bytes(&state, &request, &document).unwrap();
+        let pdf = lopdf::Document::load_mem(bytes.as_slice()).unwrap();
+        let info = pdf
+            .get_dictionary(pdf.trailer.get(b"Info").unwrap().as_reference().unwrap())
+            .unwrap();
+        let recorded = lopdf::decode_text_string(info.get(b"ExportSettings").unwrap()).unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&recorded).unwrap(),
+            snapshot
+        );
+        assert!(
+            lopdf::decode_text_string(info.get(b"Subject").unwrap())
+                .unwrap()
+                .contains("300 PPI")
+        );
+        let preferences = pdf
+            .catalog()
+            .unwrap()
+            .get(b"ViewerPreferences")
+            .unwrap()
+            .as_dict()
+            .unwrap();
+        assert_eq!(
+            preferences.get(b"PrintScaling").unwrap().as_name().unwrap(),
+            b"None"
+        );
+        let prepared = snapshot["preparedImages"].as_array().unwrap();
+        assert_eq!(
+            prepared.len(),
+            3,
+            "two numbered copies and one repeated plain source"
+        );
+        assert_eq!(prepared[0]["copyNumber"], 1);
+        assert_eq!(prepared[1]["copyNumber"], 2);
+        assert_eq!(prepared[2]["quantity"], 3);
+        for (saved, source) in prepared.iter().zip(&document.sources) {
+            assert_eq!(saved["pixelWidth"], source.image.image.width());
+            assert_eq!(saved["effectiveRasterPpi"], source.image.dpi);
+        }
     }
 
     #[test]

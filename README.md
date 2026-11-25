@@ -64,6 +64,17 @@ another path only writes those bytes. Image or setting changes replace the
 document and its PDF cache; removing an image or closing the app releases it.
 Failed PDF generation can be retried, and a failed save retains the cached PDF.
 
+Each PDF includes a setting to print at **100% (actual size)**. The setting is
+saved in the file; there is no extra option to set in the app. PDF readers and
+printer drivers can still resize the page if their print settings override it.
+
+The PDF also saves the paper size, image resolution (PPI), margins, spacing,
+grid size, and image settings. A short summary appears in PDF Properties under
+Subject/Description. The full settings are saved as JSON in `ExportSettings`;
+the summary is also saved in XMP metadata. These details help check the export.
+The PDF's page and image sizes control printing. The printer's DPI is still a
+separate printer setting.
+
 Imports convert supported embedded RGB/grayscale ICC profiles and CICP color
 metadata to sRGB. Invalid or unsupported profiles produce an error rather than
 silently changing colors. PDFs embed an sRGB ICC profile so print software can

@@ -456,3 +456,100 @@ fn pdf_preserves_sixteen_bit_channels_alpha_and_explicit_srgb_profile() {
     let expected_alpha: Vec<u8> = source.pixels().flat_map(|p| p[3].to_be_bytes()).collect();
     assert_eq!(alpha.decompressed_content().unwrap(), expected_alpha);
 }
+
+#[test]
+fn all_exports_request_actual_size_without_changing_page_dimensions() {
+    let image = RgbaImage::from_pixel(20, 40, Rgba([80, 20, 150, 128]));
+    for (width, height) in [
+        (420.0, 594.0),
+        (297.0, 420.0),
+        (210.0, 297.0),
+        (215.9, 279.4),
+    ] {
+        let options = LayoutOptions {
+            page_size: PageSize {
+                width_mm: width,
+                height_mm: height,
+            },
+            ..Default::default()
+        };
+        let items = [ImageItem::new("miniature", &image, 2)
+            .with_width_mm(width)
+            .with_size_mm(width, height)];
+        let output = compose(&items, &options).unwrap();
+        let pdf = lopdf::Document::load_mem(&output.pdf).unwrap();
+        let catalog = pdf.catalog().unwrap();
+        let preferences = pdf
+            .dereference(catalog.get(b"ViewerPreferences").unwrap())
+            .unwrap()
+            .1
+            .as_dict()
+            .unwrap();
+        assert_eq!(
+            preferences.get(b"PrintScaling").unwrap().as_name().unwrap(),
+            b"None"
+        );
+        assert_eq!(pdf.get_pages().len(), 2);
+        for id in pdf.get_pages().values() {
+            let media = pdf
+                .get_dictionary(*id)
+                .unwrap()
+                .get(b"MediaBox")
+                .unwrap()
+                .as_array()
+                .unwrap();
+            assert!((f64::from(media[2].as_float().unwrap()) - width * 72.0 / 25.4).abs() < 0.001);
+            assert!((f64::from(media[3].as_float().unwrap()) - height * 72.0 / 25.4).abs() < 0.001);
+        }
+    }
+}
+
+#[test]
+fn export_metadata_roundtrips_in_info_and_xmp_including_unicode_settings() {
+    let image = RgbaImage::from_pixel(20, 40, Rgba([80, 20, 150, 128]));
+    let items = [ImageItem::new("miniature", &image, 1)];
+    let layout = layout(&items, &LayoutOptions::default()).unwrap();
+    let metadata = image_packing::PdfMetadata {
+        title: "Créatures — miniatures".into(),
+        description: "Target raster resolution: 300 PPI; paper: 210 x 297 mm; print at 100%."
+            .into(),
+        export_settings: Some(
+            "{\"schemaVersion\":1,\"targetRasterPpi\":300,\"name\":\"Créature\"}".into(),
+        ),
+    };
+    let bytes = image_packing::render_pdf_with_metadata(&items, &layout, &metadata).unwrap();
+    let pdf = lopdf::Document::load_mem(&bytes).unwrap();
+    let info = pdf
+        .get_dictionary(pdf.trailer.get(b"Info").unwrap().as_reference().unwrap())
+        .unwrap();
+    assert_eq!(
+        lopdf::decode_text_string(info.get(b"Title").unwrap()).unwrap(),
+        metadata.title
+    );
+    assert_eq!(
+        lopdf::decode_text_string(info.get(b"Subject").unwrap()).unwrap(),
+        metadata.description
+    );
+    assert_eq!(
+        lopdf::decode_text_string(info.get(b"ExportSettings").unwrap()).unwrap(),
+        metadata.export_settings.unwrap()
+    );
+    let xmp = pdf
+        .get_object(
+            pdf.catalog()
+                .unwrap()
+                .get(b"Metadata")
+                .unwrap()
+                .as_reference()
+                .unwrap(),
+        )
+        .unwrap()
+        .as_stream()
+        .unwrap();
+    let content = xmp
+        .decompressed_content()
+        .unwrap_or_else(|_| xmp.content.clone());
+    let content = String::from_utf8(content).unwrap();
+    assert!(content.contains("300 PPI"));
+    assert!(content.contains("Créatures"));
+}
