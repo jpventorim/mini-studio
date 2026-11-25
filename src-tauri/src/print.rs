@@ -730,7 +730,7 @@ fn export_metadata(
         .collect();
     let snapshot = serde_json::json!({
         "schemaVersion": 1,
-        "application": { "name": "rust-foundry", "version": env!("CARGO_PKG_VERSION") },
+        "application": { "name": env!("CARGO_PKG_NAME"), "version": env!("CARGO_PKG_VERSION") },
         "targetRasterPpi": request.dpi,
         "printScaling": "none",
         "colorSpace": "sRGB",

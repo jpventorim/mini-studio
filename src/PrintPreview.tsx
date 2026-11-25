@@ -4,7 +4,7 @@ import {
   EmptyState,
   Notice,
   PreviewControls,
-} from "@rust-foundry/ui";
+} from "@mini-studio/ui";
 import { ImagePlus, X } from "lucide-react";
 import { type CSSProperties, memo, useId, useMemo } from "react";
 import type {

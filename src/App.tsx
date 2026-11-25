@@ -8,7 +8,7 @@ import {
   Select,
   SelectableRow,
   ThemeProvider,
-} from "@rust-foundry/ui";
+} from "@mini-studio/ui";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
@@ -37,7 +37,7 @@ import {
   printRequest,
   type SheetSettings,
 } from "./print-workspace";
-import "@rust-foundry/ui/styles.css";
+import "@mini-studio/ui/styles.css";
 import "./workspace.css";
 
 const paperOptions = Object.entries(paperSizes).map(([value, { label }]) => ({

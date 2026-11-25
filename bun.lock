@@ -3,9 +3,9 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "rust-foundry",
+      "name": "mini-studio",
       "dependencies": {
-        "@rust-foundry/ui": "workspace:*",
+        "@mini-studio/ui": "workspace:*",
         "@tauri-apps/api": "^2.12.4",
         "lucide-react": "^1.69.0",
         "react": "^19.3.1",
@@ -24,7 +24,7 @@
       },
     },
     "packages/design-system": {
-      "name": "@rust-foundry/ui",
+      "name": "@mini-studio/ui",
       "version": "0.1.0",
       "dependencies": {
         "@base-ui/react": "^1.9.0",
@@ -472,7 +472,7 @@
 
     "@rstest/core": ["@rstest/core@0.12.6", "", { "dependencies": { "@rsbuild/core": "~2.3.0", "@types/chai": "^5.2.3", "cjs-module-lexer": "^2.3.0" }, "peerDependencies": { "happy-dom": "^20.8.3", "jsdom": ">=15.0.0" }, "optionalPeers": ["happy-dom", "jsdom"], "bin": { "rstest": "./bin/rstest.js" } }, "sha512-pOOij4Gj7h9fOJiRhcQ7zmVK+l3wSINpocwlsgq34ri60UOl9FACf5qyu7LMS2A3P4feqPdKmwS7QAT3vPk5ww=="],
 
-    "@rust-foundry/ui": ["@rust-foundry/ui@workspace:packages/design-system"],
+    "@mini-studio/ui": ["@mini-studio/ui@workspace:packages/design-system"],
 
     "@storybook/addon-a11y": ["@storybook/addon-a11y@10.6.6", "", { "dependencies": { "@storybook/global": "^5.0.0", "axe-core": "^4.2.0" }, "peerDependencies": { "storybook": "^10.6.6" } }, "sha512-+LdCNVDELDqYWWbWkMX8LH9CXxDXnizfzvyJUVfkdF5CPZFRZu1xpv+jvLBFEumw/sQmizPZUXlw8zbdO1jvEQ=="],
 

@@ -221,7 +221,7 @@ size/orientation, or allow rotation to accommodate an oversized image.
 
 ## Design system
 
-`packages/design-system` is the `@rust-foundry/ui` Bun workspace package. It holds
+`packages/design-system` is the `@mini-studio/ui` Bun workspace package. It holds
 26 base components, each in its own folder with implementation, Panda CSS styles,
 Storybook stories, and Rstest browser tests. Higher-level Library components will
 be added only after their requirements are defined.

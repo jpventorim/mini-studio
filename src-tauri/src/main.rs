@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    rust_foundry_lib::run()
+    mini_studio_lib::run()
 }

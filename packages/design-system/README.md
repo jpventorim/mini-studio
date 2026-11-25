@@ -1,4 +1,4 @@
-# @rust-foundry/ui
+# @mini-studio/ui
 
 An internal React design-system package. Start with [DESIGN.md](./DESIGN.md) for
 the living visual direction and open questions. The library contains 26 base
@@ -33,8 +33,8 @@ import {
   TextField,
   Textarea,
   ThemeProvider,
-} from "@rust-foundry/ui";
-import "@rust-foundry/ui/styles.css";
+} from "@mini-studio/ui";
+import "@mini-studio/ui/styles.css";
 
 export function Example() {
   return (

@@ -6,7 +6,7 @@ import {
   NumberField,
   Readout,
   Select,
-} from "@rust-foundry/ui";
+} from "@mini-studio/ui";
 import { Trash2 } from "lucide-react";
 import {
   isStandeeSize,
