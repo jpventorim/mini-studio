@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "bun run build:ui && rsbuild dev",
     "build": "bun run typecheck && rsbuild build",
+    "build:release": "bun run build:ui && rsbuild build",
     "preview": "rsbuild preview",
     "typecheck": "bun run build:ui && tsc --noEmit && tsc --project tsconfig.node.json --noEmit && bun run --cwd packages/design-system typecheck",
     "lint": "bun run lint:js && bun run lint:rust",
