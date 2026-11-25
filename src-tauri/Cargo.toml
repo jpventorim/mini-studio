@@ -1,6 +1,6 @@
 [package]
 name = "rust-foundry"
-version = "0.1.0"
+version = "0.2.0"
 description = "Prepare tabletop print sheets"
 edition = "2024"
 
